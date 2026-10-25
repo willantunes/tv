@@ -954,8 +954,62 @@
       });
     }
 
+    let activeRow = 2; // 0 = Top Bar, 1 = Middle Cards/Bento, 2 = Bottom Dock
+    let rowColIdx = { 0: 0, 1: 0, 2: 0 };
+    let modalFocusIdx = 0;
+
+    function getOpenModal() {
+      for (const id of ['modal-weather', 'modal-inputs', 'modal-control']) {
+        const el = document.getElementById(id);
+        if (el && !el.classList.contains('hidden')) return el;
+      }
+      return null;
+    }
+
+    function getRowElements(row) {
+      if (row === 0) {
+        return ['top-0', 'top-1', 'top-2', 'top-3', 'top-4', 'top-5']
+          .map(id => document.getElementById(id))
+          .filter(Boolean);
+      }
+      if (row === 1) {
+        const heroBtns = Array.from(document.querySelectorAll('#hero-cards button'));
+        const bentos = ['bento-weather', 'bento-shield', 'bento-sleep']
+          .map(id => document.getElementById(id))
+          .filter(Boolean);
+        return [...heroBtns, ...bentos];
+      }
+      return Array.from(document.querySelectorAll('#dock-grid button'));
+    }
+
+    function apply2DFocus() {
+      document.querySelectorAll('.tv-focused').forEach(el => el.classList.remove('tv-focused'));
+
+      const modal = getOpenModal();
+      if (modal) {
+        const btns = Array.from(modal.querySelectorAll('button'));
+        if (!btns.length) return;
+        modalFocusIdx = Math.max(0, Math.min(btns.length - 1, modalFocusIdx));
+        btns[modalFocusIdx].classList.add('tv-focused');
+        btns[modalFocusIdx].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        return;
+      }
+
+      const els = getRowElements(activeRow);
+      if (!els.length) return;
+      rowColIdx[activeRow] = Math.max(0, Math.min(els.length - 1, rowColIdx[activeRow]));
+      const target = els[rowColIdx[activeRow]];
+      if (target) target.classList.add('tv-focused');
+
+      if (activeRow === 2 && focusedIdx !== rowColIdx[2]) {
+        focusedIdx = rowColIdx[2];
+        renderDock();
+      }
+    }
+
     function openModal(type) {
       closeModals();
+      modalFocusIdx = 0;
       if (type === 'weather') {
         renderWeather();
         document.getElementById('modal-weather').classList.remove('hidden');
@@ -966,12 +1020,14 @@
         renderControlModal();
         document.getElementById('modal-control').classList.remove('hidden');
       }
+      setTimeout(apply2DFocus, 20);
     }
 
     function closeModals() {
       ['modal-weather', 'modal-inputs', 'modal-control', 'modal-screensaver'].forEach(id => {
         document.getElementById(id).classList.add('hidden');
       });
+      setTimeout(apply2DFocus, 20);
     }
 
     function toggleScreensaver() {
@@ -1048,11 +1104,53 @@
       if (!document.getElementById('modal-screensaver').classList.contains('hidden')) {
         closeModals(); e.preventDefault(); return;
       }
-      if (e.key === 'ArrowRight' || code === 39) { moveFocus(1); e.preventDefault(); }
-      else if (e.key === 'ArrowLeft' || code === 37) { moveFocus(-1); e.preventDefault(); }
-      else if (e.key === 'Enter' || code === 13) { triggerSelectedApp(); e.preventDefault(); }
-      else if (e.key === 'Escape' || e.key === 'Backspace' || code === 27 || code === 461 || code === 8) { closeModals(); e.preventDefault(); }
-      else if (e.key.toLowerCase() === 'c' || code === 406) { openModal('control'); e.preventDefault(); }
+
+      const modal = getOpenModal();
+      if (modal) {
+        const btns = Array.from(modal.querySelectorAll('button'));
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || code === 39 || code === 40) {
+          modalFocusIdx = (modalFocusIdx + 1) % Math.max(1, btns.length);
+          apply2DFocus(); e.preventDefault(); return;
+        }
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowUp' || code === 37 || code === 38) {
+          modalFocusIdx = (modalFocusIdx - 1 + Math.max(1, btns.length)) % Math.max(1, btns.length);
+          apply2DFocus(); e.preventDefault(); return;
+        }
+        if (e.key === 'Enter' || code === 13) {
+          if (btns[modalFocusIdx]) btns[modalFocusIdx].click();
+          setTimeout(apply2DFocus, 30);
+          e.preventDefault(); return;
+        }
+        if (e.key === 'Escape' || e.key === 'Backspace' || code === 27 || code === 461 || code === 8) {
+          closeModals(); e.preventDefault(); return;
+        }
+        return;
+      }
+
+      if (e.key === 'ArrowRight' || code === 39) {
+        const els = getRowElements(activeRow);
+        rowColIdx[activeRow] = (rowColIdx[activeRow] + 1) % Math.max(1, els.length);
+        if (activeRow === 2) moveFocus(1);
+        apply2DFocus(); e.preventDefault();
+      } else if (e.key === 'ArrowLeft' || code === 37) {
+        const els = getRowElements(activeRow);
+        rowColIdx[activeRow] = (rowColIdx[activeRow] - 1 + Math.max(1, els.length)) % Math.max(1, els.length);
+        if (activeRow === 2) moveFocus(-1);
+        apply2DFocus(); e.preventDefault();
+      } else if (e.key === 'ArrowUp' || code === 38) {
+        activeRow = Math.max(0, activeRow - 1);
+        apply2DFocus(); e.preventDefault();
+      } else if (e.key === 'ArrowDown' || code === 40) {
+        activeRow = Math.min(2, activeRow + 1);
+        apply2DFocus(); e.preventDefault();
+      } else if (e.key === 'Enter' || code === 13) {
+        const els = getRowElements(activeRow);
+        const target = els[rowColIdx[activeRow]];
+        if (target) target.click();
+        e.preventDefault();
+      } else if (e.key === 'Escape' || e.key === 'Backspace' || code === 27 || code === 461 || code === 8) {
+        closeModals(); e.preventDefault();
+      } else if (e.key.toLowerCase() === 'c' || code === 406) { openModal('control'); e.preventDefault(); }
       else if (e.key.toLowerCase() === 'w' || code === 404) { openModal('weather'); e.preventDefault(); }
       else if (e.key.toLowerCase() === 'm' || code === 403) { cycleTheme(); e.preventDefault(); }
       else if (e.key.toLowerCase() === 'r' || code === 405) { toggleRadio(); e.preventDefault(); }
@@ -1077,7 +1175,7 @@
     renderDock();
     syncBridgeStatus();
     setInterval(syncBridgeStatus, 10000);
-    setTimeout(() => { applyTheme(); tickCanvas(); }, 80);
+    setTimeout(() => { applyTheme(); tickCanvas(); apply2DFocus(); }, 80);
   </script>
 </body>
 </html>
