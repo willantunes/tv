@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>CleanTV — Toshiba VisionOS Home</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --spring: cubic-bezier(0.22, 1, 0.36, 1);
+      --accent-glow: #e50914;
+    }
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      outline: none;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background-color: #040509;
+      color: #ffffff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .gpu-layer {
+      will-change: transform, opacity;
+      transform: translateZ(0);
+      backface-visibility: hidden;
+    }
+
+    .vision-glass {
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.095) 0%, rgba(255, 255, 255, 0.035) 100%);
+      box-shadow:
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.22),
+        inset 0 -1px 0 0 rgba(255, 255, 255, 0.04),
+        0 14px 32px -8px rgba(0, 0, 0, 0.65);
+      border: 1px solid rgba(255, 255, 255, 0.11);
+      transition: transform 0.32s var(--spring), box-shadow 0.32s var(--spring), border-color 0.25s ease, background 0.25s ease;
+    }
+
+    .vision-glass-dark {
+      background: linear-gradient(180deg, rgba(16, 18, 26, 0.96) 0%, rgba(9, 10, 15, 0.98) 100%);
+      box-shadow:
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.18),
+        0 28px 64px -12px rgba(0, 0, 0, 0.92);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+    }
+
+    .tv-focused {
+      transform: translate3d(0, -4px, 0) scale(1.035) !important;
+      border-color: rgba(255, 255, 255, 0.95) !important;
+      box-shadow:
+        inset 0 1.5px 0 0 rgba(255, 255, 255, 0.75),
+        0 20px 40px -8px rgba(0, 0, 0, 0.92),
+        0 0 0 2.5px rgba(255, 255, 255, 0.95),
+        0 8px 30px -4px var(--accent-glow) !important;
+      z-index: 25 !important;
+    }
+
+    .app-tile {
+      transition: transform 0.38s var(--spring), box-shadow 0.38s var(--spring), border-color 0.25s ease, opacity 0.25s ease;
+      box-shadow:
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.22),
+        0 8px 20px -6px rgba(0, 0, 0, 0.6);
+    }
+
+    .tile-shine {
+      background: linear-gradient(115deg, transparent 20%, rgba(255,255,255,0.22) 48%, rgba(255,255,255,0.0) 60%);
+      transform: translateX(-130%);
+      transition: transform 0.6s var(--spring);
+    }
+    .tv-focused .tile-shine {
+      transform: translateX(130%);
+    }
+
+    @keyframes heroFade {
+      from { opacity: 0; transform: translate3d(0, 6px, 0); }
+      to   { opacity: 1; transform: translate3d(0, 0, 0); }
+    }
+    .hero-animate { animation: heroFade 0.38s var(--spring) forwards; }
+
+    @keyframes meshBreathe {
+      0%, 100% { transform: translate3d(0%, 0%, 0) scale(1); }
+      50%      { transform: translate3d(3%, -2%, 0) scale(1.06); }
+    }
+    .aurora-orb {
+      animation: meshBreathe 14s ease-in-out infinite;
+      transition: background 0.7s ease;
+    }
+
+    @keyframes spinSlow {
+      from { transform: rotate(0deg); }
+      to   { transform: rotate(360deg); }
+    }
+    @keyframes eqPulse {
+      0%, 100% { transform: scaleY(0.3); }
+      50%      { transform: scaleY(1); }
+    }
+    .sun-spin { transform-origin: center; animation: spinSlow 24s linear infinite; }
+    .eq-1 { transform-origin: bottom; animation: eqPulse 0.65s ease-in-out infinite; }
+    .eq-2 { transform-origin: bottom; animation: eqPulse 0.48s ease-in-out infinite 0.15s; }
+    .eq-3 { transform-origin: bottom; animation: eqPulse 0.78s ease-in-out infinite 0.25s; }
+
+    @keyframes screensaverDrift {
+      0%, 100% { transform: translate3d(0px, 0px, 0); }
+      25%      { transform: translate3d(36px, -22px, 0); }
+      50%      { transform: translate3d(-20px, 26px, 0); }
+      75%      { transform: translate3d(-32px, -16px, 0); }
+    }
+    .ss-drift { animation: screensaverDrift 28s ease-in-out infinite; }
+  </style>
+</head>
+<body>
+
+  <!-- FULLSCREEN 16:9 TV STAGE -->
+  <div id="tv-screen" class="relative w-screen h-screen overflow-hidden bg-[#040509] text-white grid grid-rows-[auto_1fr_auto] gap-6 px-10 py-8 lg:px-14 lg:py-10 gpu-layer">
+
+    <!-- Layer 1: Dynamic Hero Backdrop -->
+    <div id="hero-backdrop" class="pointer-events-none absolute inset-0 transition-opacity duration-700 opacity-90"
+         style="background: radial-gradient(110% 90% at 70% 20%, rgba(229, 9, 20, 0.34) 0%, rgba(15, 23, 42, 0.15) 55%, rgba(4, 5, 9, 0.98) 100%);">
+    </div>
+
+    <!-- Layer 2: Floating GPU Ambient Orb -->
+    <div id="ambient-orb" class="pointer-events-none absolute -top-24 right-12 w-[48%] h-[62%] rounded-full blur-3xl opacity-35 aurora-orb gpu-layer"
+         style="background: radial-gradient(circle, #E50914 0%, transparent 70%);">
+    </div>
+
+    <!-- Layer 3: Lightweight 60fps Canvas -->
+    <canvas id="ambient-canvas" class="pointer-events-none absolute inset-0 w-full h-full z-0 opacity-60"></canvas>
+
+    <!-- Vignette Scrim -->
+    <div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#040509] via-transparent to-[#040509]/50"></div>
+
+    <!-- ================= ROW 1: SYMMETRIC TOP NAVIGATION BAR ================= -->
+    <header class="relative z-10 grid grid-cols-6 gap-4 items-center">
+      <div class="col-span-4 flex items-center gap-3">
+        <button id="top-0" onclick="changeGreeting()" class="vision-glass h-11 rounded-full pl-2 pr-4 flex items-center gap-2.5">
+          <div class="w-7 h-7 rounded-full bg-gradient-to-tr from-indigo-500 to-sky-400 flex items-center justify-center text-xs font-bold text-white">
+            <span id="avatar-initial">W</span>
+          </div>
+          <span id="greeting-text" class="text-sm font-semibold text-white/95 tracking-wide">William</span>
+        </button>
+
+        <button id="top-1" onclick="openModal('weather')" class="vision-glass h-11 rounded-full px-4 flex items-center gap-2.5">
+          <svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none">
+            <circle class="sun-spin" cx="9.5" cy="9" r="3.5" fill="#FBBF24"/>
+            <path d="M17.5 18.5H9a4 4 0 0 1-.4-7.98A5 5 0 0 1 18 11.5a3.5 3.5 0 0 1-.5 7Z" fill="#F8FAFC"/>
+          </svg>
+          <span id="weather-temp" class="text-sm font-semibold text-white">19°</span>
+          <span class="text-white/30 text-xs">·</span>
+          <span id="weather-city" class="text-sm text-white/75">Lisboa</span>
+        </button>
+
+        <button id="top-2" onclick="cycleTheme()" class="vision-glass h-11 rounded-full px-4 flex items-center gap-2 text-sm font-medium text-white/85">
+          <svg class="w-4 h-4 text-sky-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a7 7 0 1 0 10 10"/></svg>
+          <span id="theme-toolbar-label">Cinema Glow</span>
+        </button>
+
+        <button id="sleep-pill" onclick="cycleSleepTimer()" class="hidden vision-glass h-11 rounded-full px-3.5 items-center gap-1.5 text-sm text-indigo-200">
+          <svg class="w-4 h-4 text-indigo-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+          <span id="sleep-pill-text">60m</span>
+        </button>
+      </div>
+
+      <div class="col-span-2 flex items-center justify-end gap-2.5">
+        <button id="top-3" onclick="toggleRadio()" class="vision-glass h-11 rounded-full px-4 flex items-center gap-2 text-sm font-medium text-white/90">
+          <svg id="radio-static-icon" class="w-4 h-4 text-white/75" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 10v3"/><path d="M6 6v11"/><path d="M10 3v18"/><path d="M14 8v7"/><path d="M18 5v13"/><path d="M22 10v3"/></svg>
+          <svg id="radio-anim-icon" class="hidden w-4 h-4 text-emerald-400" viewBox="0 0 24 24" fill="currentColor">
+            <rect class="eq-1" x="3" y="6" width="3.5" height="14" rx="1.5"/>
+            <rect class="eq-2" x="10.2" y="3" width="3.5" height="17" rx="1.5"/>
+            <rect class="eq-3" x="17.5" y="8" width="3.5" height="12" rx="1.5"/>
+          </svg>
+          <span id="radio-label">Ambiente</span>
+        </button>
+
+        <button id="top-4" onclick="openModal('inputs')" class="vision-glass h-11 rounded-full px-4 flex items-center gap-2 text-sm font-medium text-white/90">
+          <svg class="w-4 h-4 text-white/75" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="12" rx="2"/><path d="M6 20h12"/><path d="M12 16v4"/></svg>
+          <span id="active-input-label">HDMI</span>
+        </button>
+
+        <button id="top-5" onclick="openModal('control')" class="vision-glass w-11 h-11 rounded-full flex items-center justify-center text-white/90" title="Painel de Controlo">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+
+        <div class="pl-3 ml-1 border-l border-white/15 text-right">
+          <div id="tv-clock" class="text-2xl font-light tracking-tight text-white leading-none">14:05</div>
+          <div id="tv-date" class="text-xs text-white/45 font-medium leading-none mt-1">Dom, 25 Out</div>
+        </div>
+      </div>
+    </header>
+
+    <!-- ================= ROW 2: SYMMETRIC 6-COLUMN CENTER STAGE ================= -->
+    <main class="relative z-10 grid grid-cols-6 gap-4 items-stretch my-auto">
+
+      <!-- Left 4 Columns: Hero Stage -->
+      <div id="hero-container" class="col-span-4 flex flex-col justify-between hero-animate">
+        <div class="space-y-3">
+          <div class="flex items-center gap-3">
+            <span id="hero-tag" class="px-3 py-1 rounded-md bg-white/15 border border-white/20 text-xs font-semibold tracking-wider uppercase text-white">
+              4K Dolby Vision
+            </span>
+            <span id="hero-subtag" class="text-sm font-medium text-white/60">
+              Continuar a ver
+            </span>
+          </div>
+
+          <h2 id="hero-title" class="text-5xl lg:text-6xl font-bold tracking-tight text-white leading-none pt-1">
+            Netflix
+          </h2>
+
+          <p id="hero-desc" class="text-sm lg:text-base text-white/70 max-w-2xl leading-relaxed pt-1">
+            Retome as suas séries imediatamente em 4K HDR sem faixas patrocinadas no sistema.
+          </p>
+        </div>
+
+        <div class="pt-4">
+          <div class="text-xs font-semibold text-white/45 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5 text-white/60" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            <span>Continuar a Ver &amp; Sugestões</span>
+          </div>
+          <div id="hero-cards" class="grid grid-cols-3 gap-4"></div>
+        </div>
+      </div>
+
+      <!-- Right 2 Columns: Bento Widgets -->
+      <div class="col-span-2 flex flex-col justify-between gap-4">
+        <div id="bento-weather" onclick="openModal('weather')" class="vision-glass rounded-3xl p-5 cursor-pointer flex-1 flex flex-col justify-between">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3.5">
+              <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-sky-400/25 to-indigo-500/20 border border-white/15 flex items-center justify-center shrink-0">
+                <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none">
+                  <circle class="sun-spin" cx="9.5" cy="8.5" r="3.5" fill="#FBBF24"/>
+                  <path d="M17.5 18.5H8.5a4 4 0 0 1-.4-7.98A5 5 0 0 1 18 11.5a3.5 3.5 0 0 1-.5 7Z" fill="#F8FAFC"/>
+                </svg>
+              </div>
+              <div class="min-w-0">
+                <div class="flex items-center gap-1.5">
+                  <span id="widget-city" class="text-base font-semibold text-white truncate">Lisboa</span>
+                  <svg class="w-3.5 h-3.5 text-sky-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2a8 8 0 0 0-8 8c0 5.25 8 12 8 12s8-6.75 8-12a8 8 0 0 0-8-8z"/></svg>
+                </div>
+                <div id="widget-cond" class="text-xs text-white/60 truncate mt-0.5">Céu pouco nublado</div>
+              </div>
+            </div>
+            <div class="text-right shrink-0">
+              <div id="widget-temp" class="text-3xl font-light tracking-tight text-white leading-none">19°</div>
+              <div id="widget-hilo" class="text-xs text-white/45 mt-1">22° / 14°</div>
+            </div>
+          </div>
+
+          <div id="mini-forecast" class="grid grid-cols-4 gap-2 pt-4 mt-4 border-t border-white/10 text-center"></div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <button id="bento-shield" onclick="openModal('control')" class="vision-glass h-[84px] rounded-2xl px-4 flex items-center gap-3.5 text-left">
+            <div class="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center shrink-0 text-emerald-300">
+              <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+            </div>
+            <div class="min-w-0">
+              <div class="text-sm font-semibold text-white truncate">Escudo DNS</div>
+              <div id="widget-apps-count" class="text-xs text-emerald-300/90 truncate mt-0.5">6 apps · Limpo</div>
+            </div>
+          </button>
+
+          <button id="bento-sleep" onclick="cycleSleepTimer()" class="vision-glass h-[84px] rounded-2xl px-4 flex items-center gap-3.5 text-left">
+            <div class="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center shrink-0 text-indigo-300">
+              <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </div>
+            <div class="min-w-0">
+              <div class="text-sm font-semibold text-white truncate">Sleep Timer</div>
+              <div id="widget-sleep-text" class="text-xs text-white/60 truncate mt-0.5">Desativado</div>
+            </div>
+          </button>
+        </div>
+      </div>
+    </main>
+
+    <!-- ================= ROW 3: SYMMETRIC 6-COLUMN DOCK & FOOTER ================= -->
+    <footer class="relative z-10 space-y-2.5">
+      <div class="vision-glass rounded-3xl p-4">
+        <div id="dock-grid" class="grid grid-cols-6 gap-4"></div>
+      </div>
+
+      <div class="flex items-center justify-between px-2 text-xs text-white/45">
+        <div id="status-toast" class="flex items-center gap-2 text-white/75 font-medium">
+          <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+          <span>Setas ◀ ▶ ▲ ▼ para navegar · OK para abrir · Botões de cor ou C/W/M para atalhos</span>
+        </div>
+        <div class="flex items-center gap-4">
+          <button onclick="toggleScreensaver()" class="hover:text-white transition">🌙 Standby</button>
+          <span>·</span>
+          <span>São Paulo <strong id="clock-sp" class="text-white/70 font-normal">10:05</strong></span>
+          <span>·</span>
+          <span>Londres <strong id="clock-uk" class="text-white/70 font-normal">14:05</strong></span>
+        </div>
+      </div>
+    </footer>
+
+    <!-- ================= MODAL: WEATHER DETAIL ================= -->
+    <div id="modal-weather" class="hidden absolute inset-0 z-30 bg-black/80 flex items-center justify-center p-8">
+      <div class="vision-glass-dark w-full max-w-2xl rounded-3xl p-7 space-y-6">
+        <div class="flex items-center justify-between border-b border-white/10 pb-4">
+          <div class="flex items-center gap-3">
+            <div class="w-11 h-11 rounded-2xl bg-sky-500/20 border border-sky-400/30 flex items-center justify-center text-sky-300">
+              <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>
+            </div>
+            <div>
+              <h3 class="text-lg font-semibold text-white">Previsão Meteorológica — <span id="modal-weather-city">Lisboa</span></h3>
+              <p class="text-xs text-white/55">Dados meteorológicos em tempo real (Open-Meteo)</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="switchCity()" class="vision-glass px-3.5 py-2 rounded-xl text-xs font-medium text-white hover:bg-white/15">Mudar Cidade</button>
+            <button onclick="closeModals()" class="px-3.5 py-2 rounded-xl bg-white/15 hover:bg-white/25 text-xs font-medium text-white">Fechar</button>
+          </div>
+        </div>
+        <div id="modal-forecast-cards" class="grid grid-cols-5 gap-3.5"></div>
+      </div>
+    </div>
+
+    <!-- ================= MODAL: HDMI INPUTS ================= -->
+    <div id="modal-inputs" class="hidden absolute inset-0 z-30 bg-black/80 flex items-center justify-center p-8">
+      <div class="vision-glass-dark w-full max-w-md rounded-3xl p-7 space-y-4">
+        <div class="flex items-center justify-between border-b border-white/10 pb-3">
+          <div class="flex items-center gap-2.5">
+            <svg class="w-5 h-5 text-sky-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="12" rx="2"/><path d="M6 20h12"/><path d="M12 16v4"/></svg>
+            <h3 class="text-base font-semibold text-white">Selecionar Entrada HDMI / TV</h3>
+          </div>
+          <button onclick="closeModals()" class="px-3 py-1 rounded-xl bg-white/15 hover:bg-white/25 text-xs text-white">Voltar</button>
+        </div>
+        <div id="inputs-list" class="space-y-2.5"></div>
+      </div>
+    </div>
+
+    <!-- ================= MODAL: CONTROL CENTER & APP MANAGER ================= -->
+    <div id="modal-control" class="hidden absolute inset-0 z-30 bg-black/85 flex items-center justify-center p-8">
+      <div class="vision-glass-dark w-full max-w-3xl max-h-full overflow-y-auto rounded-3xl p-7 space-y-5">
+        <div class="flex items-center justify-between border-b border-white/10 pb-4">
+          <div>
+            <h3 class="text-lg font-semibold text-white">Painel de Controlo &amp; Aplicações</h3>
+            <p class="text-xs text-white/55">As suas escolhas ficam guardadas automaticamente na memória da TV</p>
+          </div>
+          <button onclick="closeModals()" class="px-4 py-2 rounded-xl bg-white text-black text-xs font-semibold hover:opacity-90">Guardar &amp; Fechar</button>
+        </div>
+        <div id="app-manager-grid" class="grid grid-cols-3 gap-3"></div>
+      </div>
+    </div>
+
+    <!-- ================= MODAL: OLED STANDBY SCREENSAVER ================= -->
+    <div id="modal-screensaver" onclick="toggleScreensaver()" class="hidden absolute inset-0 z-40 bg-[#020306] flex items-center justify-center cursor-pointer">
+      <div class="pointer-events-none absolute w-[450px] h-[450px] rounded-full blur-3xl opacity-25 ss-drift"
+           style="background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);"></div>
+      <div class="text-center ss-drift space-y-3">
+        <div id="ss-clock" class="text-8xl font-extralight tracking-tighter text-white/95">14:05</div>
+        <div class="flex items-center justify-center gap-3 text-base text-white/55 font-medium">
+          <span id="ss-city-weather">Lisboa · 19°C</span>
+          <span>·</span>
+          <span>OLED Care Ativo</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const BRAND_SVGS = {
+      netflix: `<svg class="w-7 h-7" viewBox="0 0 24 24" fill="none"><path d="M5.5 3h3.6v18H5.5V3zm9.4 0h3.6v18h-3.6V3z" fill="#B20710"/><path d="M5.5 3h3.6l9.4 18h-3.6L5.5 3z" fill="#E50914"/></svg>`,
+      youtube: `<svg class="w-7 h-7" viewBox="0 0 24 24" fill="none"><rect x="2" y="4.5" width="20" height="15" rx="4.5" fill="#FF0033"/><polygon points="10 8.5 16 12 10 15.5" fill="#FFFFFF"/></svg>`,
+      prime: `<svg class="w-7 h-7" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9.5" fill="#00A8E1" fill-opacity="0.2" stroke="#00A8E1" stroke-width="1.6"/><path d="M6.5 13.5c3.2 2.6 7.8 2.6 11 0" stroke="#38BDF8" stroke-width="2.2" stroke-linecap="round"/><path d="M15.8 12.2l2.3.9-.8 2.3" stroke="#38BDF8" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="9" r="2" fill="#FFFFFF"/></svg>`,
+      disney: `<svg class="w-7 h-7" viewBox="0 0 24 24" fill="none"><path d="M4.5 16.5C6.5 9 15.5 7.5 19.5 15" stroke="#60A5FA" stroke-width="2.1" stroke-linecap="round"/><path d="M17.5 5.5v4.5M15.25 7.75h4.5" stroke="#FACC15" stroke-width="2" stroke-linecap="round"/><circle cx="11" cy="15.5" r="2" fill="#FFFFFF"/></svg>`,
+      rtp: `<svg class="w-7 h-7" viewBox="0 0 24 24" fill="none"><rect x="2.5" y="5.5" width="19" height="13" rx="3.5" fill="#0284C7"/><circle cx="8.2" cy="12" r="2.6" fill="#FFFFFF"/><path d="M13.2 9.5h4.5M13.2 12h3.2M13.2 14.5h4.5" stroke="#FFFFFF" stroke-width="1.9" stroke-linecap="round"/></svg>`,
+      stremio: `<svg class="w-7 h-7" viewBox="0 0 24 24" fill="none"><polygon points="12 2.5 21.5 12 12 21.5 2.5 12" fill="url(#stremGrad)"/><polygon points="10.5 8.5 15.8 12 10.5 15.5" fill="#FFFFFF"/><defs><linearGradient id="stremGrad" x1="2.5" y1="2.5" x2="21.5" y2="21.5" gradientUnits="userSpaceOnUse"><stop stop-color="#A855F7"/><stop offset="1" stop-color="#3B82F6"/></linearGradient></defs></svg>`,
+      bloat: `<svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="m9 9 6 6m0-6-6 6"/></svg>`
+    };
+
+    const ALL_APPS = [
+      {
+        id: 'netflix', name: 'Netflix', subtitle: '4K Dolby Vision', url: 'https://www.netflix.com', color: '#E50914',
+        tileBg: 'linear-gradient(145deg, rgba(185, 10, 20, 0.88) 0%, rgba(22, 6, 10, 0.96) 100%)',
+        heroBg: 'radial-gradient(110% 90% at 70% 20%, rgba(229, 9, 20, 0.36) 0%, rgba(15, 23, 42, 0.15) 55%, rgba(4, 5, 9, 0.98) 100%)',
+        svg: BRAND_SVGS.netflix, desc: 'Retome as suas séries imediatamente em 4K HDR sem faixas patrocinadas no sistema.',
+        tag: '4K Dolby Vision', subtag: 'Continuar a ver', enabled: true,
+        cards: [
+          { title: 'Black Mirror · T7', sub: 'Ep. 2 · Restam 24 min', progress: 65, accent: '#E50914' },
+          { title: 'Senna', sub: 'Minissérie · 4K Atmos', progress: 35, accent: '#EF4444' },
+          { title: '3 Body Problem', sub: 'Sci-Fi · Top 10 Portugal', progress: 88, accent: '#DC2626' }
+        ]
+      },
+      {
+        id: 'youtube', name: 'YouTube', subtitle: '4K 60fps HDR', url: 'https://www.youtube.com/tv', color: '#FF0033',
+        tileBg: 'linear-gradient(145deg, rgba(205, 0, 40, 0.88) 0%, rgba(24, 6, 12, 0.96) 100%)',
+        heroBg: 'radial-gradient(110% 90% at 70% 20%, rgba(255, 0, 51, 0.32) 0%, rgba(15, 23, 42, 0.15) 55%, rgba(4, 5, 9, 0.98) 100%)',
+        svg: BRAND_SVGS.youtube, desc: 'Subscrições, canais em direto, concertos e vídeos em 4K 60fps.',
+        tag: '60fps HDR', subtag: 'Subscrições & Diretos', enabled: true,
+        cards: [
+          { title: 'Costa de Portugal 4K', sub: 'Drone 60fps HDR', progress: 45, accent: '#FF0033' },
+          { title: 'Resumo Liga Portugal', sub: 'Desporto · Hoje', progress: 20, accent: '#F43F5E' },
+          { title: 'Lofi Hip Hop Radio', sub: 'Em Direto · 24/7', progress: 100, accent: '#FB7185' }
+        ]
+      },
+      {
+        id: 'prime', name: 'Prime Video', subtitle: 'HDR10+ · Originals', url: 'https://www.primevideo.com', color: '#00A8E1',
+        tileBg: 'linear-gradient(145deg, rgba(2, 132, 199, 0.88) 0%, rgba(6, 18, 32, 0.96) 100%)',
+        heroBg: 'radial-gradient(110% 90% at 70% 20%, rgba(0, 168, 225, 0.34) 0%, rgba(15, 23, 42, 0.15) 55%, rgba(4, 5, 9, 0.98) 100%)',
+        svg: BRAND_SVGS.prime, desc: 'Amazon Originals, Fallout, The Boys e cinema em casa com X-Ray.',
+        tag: 'HDR10+ Atmos', subtag: 'Incluído no Prime', enabled: true,
+        cards: [
+          { title: 'Fallout', sub: 'T1 Ep. 5 · 4K HDR10+', progress: 55, accent: '#00A8E1' },
+          { title: 'The Boys', sub: 'Temporada 4 · UHD', progress: 80, accent: '#38BDF8' },
+          { title: 'Road House', sub: 'Filme · Ação', progress: 25, accent: '#0284C7' }
+        ]
+      },
+      {
+        id: 'disney', name: 'Disney+', subtitle: 'IMAX Enhanced', url: 'https://www.disneyplus.com', color: '#38BDF8',
+        tileBg: 'linear-gradient(145deg, rgba(29, 78, 216, 0.88) 0%, rgba(7, 12, 30, 0.96) 100%)',
+        heroBg: 'radial-gradient(110% 90% at 70% 20%, rgba(56, 189, 248, 0.32) 0%, rgba(15, 23, 42, 0.15) 55%, rgba(4, 5, 9, 0.98) 100%)',
+        svg: BRAND_SVGS.disney, desc: 'FX, Marvel, Star Wars, Pixar e documentários National Geographic em IMAX.',
+        tag: 'IMAX Enhanced', subtag: 'Coleções em 4K', enabled: true,
+        cards: [
+          { title: 'Shōgun', sub: 'FX · 18 Emmys', progress: 95, accent: '#38BDF8' },
+          { title: 'The Bear', sub: 'T3 Ep. 4 · Drama', progress: 40, accent: '#60A5FA' },
+          { title: 'Andor', sub: 'Star Wars · 4K Dolby', progress: 70, accent: '#2563EB' }
+        ]
+      },
+      {
+        id: 'rtp', name: 'RTP Play', subtitle: 'Em Direto · HD', url: 'https://www.rtp.pt/play/', color: '#0284C7',
+        tileBg: 'linear-gradient(145deg, rgba(3, 105, 161, 0.88) 0%, rgba(6, 15, 28, 0.96) 100%)',
+        heroBg: 'radial-gradient(110% 90% at 70% 20%, rgba(2, 132, 199, 0.34) 0%, rgba(15, 23, 42, 0.15) 55%, rgba(4, 5, 9, 0.98) 100%)',
+        svg: BRAND_SVGS.rtp, desc: 'Canais portugueses em direto (RTP1, RTP2, RTP3) e séries nacionais on-demand.',
+        tag: 'TV em Direto', subtag: 'Emissão Nacional', enabled: true,
+        cards: [
+          { title: 'RTP 1 · Em Direto', sub: 'Emissão contínua HD', progress: 100, accent: '#0284C7' },
+          { title: 'RTP 3 · Notícias', sub: 'Informação 24h', progress: 100, accent: '#38BDF8' },
+          { title: 'Séries RTP', sub: 'Catálogo On-Demand', progress: 50, accent: '#0369A1' }
+        ]
+      },
+      {
+        id: 'stremio', name: 'Stremio Web', subtitle: 'Cinema & Media', url: 'https://web.stremio.com', color: '#A855F7',
+        tileBg: 'linear-gradient(145deg, rgba(109, 40, 217, 0.88) 0%, rgba(16, 8, 32, 0.96) 100%)',
+        heroBg: 'radial-gradient(110% 90% at 70% 20%, rgba(168, 85, 247, 0.34) 0%, rgba(15, 23, 42, 0.15) 55%, rgba(4, 5, 9, 0.98) 100%)',
+        svg: BRAND_SVGS.stremio, desc: 'A sua biblioteca pessoal de cinema, calendário de episódios e servidor doméstico.',
+        tag: 'TrueHD · 4K', subtag: 'Media Center', enabled: true,
+        cards: [
+          { title: 'Dune: Part Two', sub: '4K HDR · 2h 46m', progress: 75, accent: '#A855F7' },
+          { title: 'Severance · T2', sub: 'Novo Episódio', progress: 35, accent: '#C084FC' },
+          { title: 'Oppenheimer', sub: 'IMAX 4K · Biblioteca', progress: 100, accent: '#9333EA' }
+        ]
+      },
+      { id: 'vidaafree', name: 'VIDAA Free', subtitle: 'Pré-instalada', color: '#64748B', tileBg: '#1E293B', heroBg: '', svg: BRAND_SVGS.bloat, desc: 'App promocional desativada.', tag: 'Oculta', subtag: '', enabled: false, cards: [] },
+      { id: 'vidaaart', name: 'VIDAA Art', subtitle: 'Pré-instalada', color: '#64748B', tileBg: '#1E293B', heroBg: '', svg: BRAND_SVGS.bloat, desc: 'App promocional desativada.', tag: 'Oculta', subtag: '', enabled: false, cards: [] },
+      { id: 'kidoodle', name: 'Kidoodle.TV', subtitle: 'Pré-instalada', color: '#64748B', tileBg: '#1E293B', heroBg: '', svg: BRAND_SVGS.bloat, desc: 'App promocional desativada.', tag: 'Oculta', subtag: '', enabled: false, cards: [] }
+    ];
+
+    const CITIES = [
+      { name: 'Lisboa', lat: 38.7223, lon: -9.1393, temp: '19°', cond: 'Céu pouco nublado', hiLo: '22° / 14°', days: [
+        { d: 'Seg', hi: '23°', lo: '14°', type: 'sun' },
+        { d: 'Ter', hi: '24°', lo: '15°', type: 'sun' },
+        { d: 'Qua', hi: '20°', lo: '13°', type: 'cloud' },
+        { d: 'Qui', hi: '18°', lo: '12°', type: 'rain' },
+        { d: 'Sex', hi: '21°', lo: '14°', type: 'sun' }
+      ]},
+      { name: 'Porto', lat: 41.1579, lon: -8.6291, temp: '17°', cond: 'Brisa Atlântica', hiLo: '19° / 12°', days: [
+        { d: 'Seg', hi: '20°', lo: '12°', type: 'cloud' },
+        { d: 'Ter', hi: '21°', lo: '13°', type: 'sun' },
+        { d: 'Qua', hi: '17°', lo: '11°', type: 'rain' },
+        { d: 'Qui', hi: '18°', lo: '11°', type: 'cloud' },
+        { d: 'Sex', hi: '20°', lo: '12°', type: 'sun' }
+      ]},
+      { name: 'São Paulo', lat: -23.5505, lon: -46.6333, temp: '26°', cond: 'Sol entre nuvens', hiLo: '28° / 18°', days: [
+        { d: 'Seg', hi: '28°', lo: '19°', type: 'sun' },
+        { d: 'Ter', hi: '25°', lo: '18°', type: 'rain' },
+        { d: 'Qua', hi: '26°', lo: '17°', type: 'cloud' },
+        { d: 'Qui', hi: '29°', lo: '19°', type: 'sun' },
+        { d: 'Sex', hi: '30°', lo: '20°', type: 'sun' }
+      ]}
+    ];
+
+    const THEMES = [
+      { name: 'Cinema Glow', mode: 'orbs' },
+      { name: 'Chuva Suave', mode: 'rain' },
+      { name: 'OLED Pitch Black', mode: 'off' }
+    ];
+
+    let focusedIdx = 0;
+    let cityIdx = Number(localStorage.getItem('cleantv_city') || 0);
+    let themeIdx = Number(localStorage.getItem('cleantv_theme') || 0);
+    let userIdx = Number(localStorage.getItem('cleantv_user') || 0);
+    let radioOn = false;
+    let audioCtx = null;
+    let audioNodes = [];
+    let sleepMin = 0;
+    const USERS = ['William', 'Bianca', 'Cinema', 'Família'];
+
+    // Restore saved app visibility from TV localStorage
+    try {
+      const savedApps = JSON.parse(localStorage.getItem('cleantv_apps') || 'null');
+      if (savedApps) {
+        ALL_APPS.forEach(a => {
+          if (typeof savedApps[a.id] === 'boolean') a.enabled = savedApps[a.id];
+        });
+      }
+    } catch (_) {}
+
+    function saveState() {
+      try {
+        const map = {};
+        ALL_APPS.forEach(a => map[a.id] = a.enabled);
+        localStorage.setItem('cleantv_apps', JSON.stringify(map));
+        localStorage.setItem('cleantv_city', String(cityIdx));
+        localStorage.setItem('cleantv_theme', String(themeIdx));
+        localStorage.setItem('cleantv_user', String(userIdx));
+      } catch (_) {}
+    }
+
+    function weatherTypeSvg(type) {
+      if (type === 'sun') {
+        return `<svg class="w-5 h-5 mx-auto" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="5" fill="#FBBF24"/><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32 1.41-1.41" stroke="#FBBF24" stroke-width="2" stroke-linecap="round"/></svg>`;
+      }
+      if (type === 'rain') {
+        return `<svg class="w-5 h-5 mx-auto" viewBox="0 0 24 24" fill="none"><path d="M17.5 15H8.5a4 4 0 0 1-.4-7.98A5 5 0 0 1 18 8a3.5 3.5 0 0 1-.5 7Z" fill="#94A3B8"/><path d="M9 17v3m4-3v3m4-3v3" stroke="#38BDF8" stroke-width="2" stroke-linecap="round"/></svg>`;
+      }
+      return `<svg class="w-5 h-5 mx-auto" viewBox="0 0 24 24" fill="none"><circle cx="9" cy="9" r="3.5" fill="#FBBF24"/><path d="M17.5 18H8.5a4 4 0 0 1-.4-7.98A5 5 0 0 1 18 11a3.5 3.5 0 0 1-.5 7Z" fill="#E2E8F0"/></svg>`;
+    }
+
+    function getEnabledApps() {
+      return ALL_APPS.filter(a => a.enabled);
+    }
+
+    function renderDock() {
+      const apps = getEnabledApps();
+      if (focusedIdx >= apps.length) focusedIdx = Math.max(0, apps.length - 1);
+
+      const grid = document.getElementById('dock-grid');
+      grid.innerHTML = '';
+
+      apps.forEach((app, idx) => {
+        const isFocused = idx === focusedIdx;
+        const btn = document.createElement('button');
+        btn.className = `app-tile gpu-layer relative h-[100px] rounded-2xl px-4 py-3.5 flex flex-col justify-between text-left border overflow-hidden ${
+          isFocused ? 'tv-focused border-white/85' : 'border-white/10 opacity-80 hover:opacity-100'
+        }`;
+        btn.style.background = app.tileBg;
+
+        btn.onmouseenter = () => {
+          if (focusedIdx !== idx) {
+            focusedIdx = idx;
+            renderDock();
+          }
+        };
+        btn.onclick = () => {
+          focusedIdx = idx;
+          renderDock();
+          triggerSelectedApp();
+        };
+
+        btn.innerHTML = `
+          <div class="tile-shine pointer-events-none absolute inset-0"></div>
+          <div class="relative z-10 flex items-center justify-between w-full">
+            ${app.svg}
+            ${isFocused ? `<span class="w-2.5 h-2.5 rounded-full bg-white shadow-[0_0_8px_#fff]"></span>` : ''}
+          </div>
+          <div class="relative z-10 leading-tight">
+            <div class="text-sm lg:text-base font-semibold text-white tracking-tight truncate">${app.name}</div>
+            <div class="text-xs text-white/60 truncate mt-0.5">${app.subtitle}</div>
+          </div>
+        `;
+        grid.appendChild(btn);
+      });
+
+      updateHero();
+      document.getElementById('widget-apps-count').textContent = `${apps.length} apps · Limpo`;
+    }
+
+    function updateHero() {
+      const apps = getEnabledApps();
+      const app = apps[focusedIdx] || ALL_APPS[0];
+
+      const screen = document.getElementById('tv-screen');
+      screen.style.setProperty('--accent-glow', app.color);
+      document.getElementById('ambient-orb').style.background = `radial-gradient(circle, ${app.color} 0%, transparent 70%)`;
+      document.getElementById('hero-backdrop').style.background = app.heroBg;
+
+      const hero = document.getElementById('hero-container');
+      hero.classList.remove('hero-animate');
+      void hero.offsetWidth;
+      hero.classList.add('hero-animate');
+
+      document.getElementById('hero-title').textContent = app.name;
+      document.getElementById('hero-desc').textContent = app.desc;
+      document.getElementById('hero-tag').textContent = app.tag;
+      document.getElementById('hero-subtag').textContent = app.subtag;
+
+      const cardsEl = document.getElementById('hero-cards');
+      cardsEl.innerHTML = '';
+      (app.cards || []).forEach(c => {
+        const card = document.createElement('button');
+        card.className = 'vision-glass h-[84px] rounded-2xl px-4 py-3 text-left hover:bg-white/15 transition group flex flex-col justify-between';
+        card.onclick = () => triggerSelectedApp();
+        card.innerHTML = `
+          <div class="min-w-0">
+            <div class="text-sm font-semibold text-white truncate group-hover:text-sky-200 transition">${c.title}</div>
+            <div class="text-xs text-white/55 truncate mt-0.5">${c.sub}</div>
+          </div>
+          <div class="w-full h-1.5 bg-white/15 rounded-full overflow-hidden">
+            <div class="h-full rounded-full" style="width:${c.progress}%; background:${c.accent}"></div>
+          </div>
+        `;
+        cardsEl.appendChild(card);
+      });
+    }
+
+    async function fetchLiveWeather() {
+      const c = CITIES[cityIdx];
+      try {
+        const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${c.lat}&longitude=${c.lon}&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min&timezone=auto`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data && data.current) {
+          c.temp = `${Math.round(data.current.temperature_2m)}°`;
+          if (data.daily && data.daily.temperature_2m_max) {
+            c.hiLo = `${Math.round(data.daily.temperature_2m_max[0])}° / ${Math.round(data.daily.temperature_2m_min[0])}°`;
+          }
+          renderWeather();
+        }
+      } catch (_) {}
+    }
+
+    function renderWeather() {
+      const c = CITIES[cityIdx];
+      document.getElementById('weather-temp').textContent = c.temp;
+      document.getElementById('weather-city').textContent = c.name;
+      document.getElementById('widget-city').textContent = c.name;
+      document.getElementById('widget-cond').textContent = c.cond;
+      document.getElementById('widget-temp').textContent = c.temp;
+      document.getElementById('widget-hilo').textContent = c.hiLo;
+      document.getElementById('modal-weather-city').textContent = c.name;
+      document.getElementById('ss-city-weather').textContent = `${c.name} · ${c.temp}C`;
+
+      const strip = document.getElementById('mini-forecast');
+      strip.innerHTML = '';
+      c.days.slice(0, 4).forEach(d => {
+        const div = document.createElement('div');
+        div.className = 'space-y-1.5';
+        div.innerHTML = `
+          <div class="text-xs text-white/50">${d.d}</div>
+          ${weatherTypeSvg(d.type)}
+          <div class="text-xs font-semibold text-white">${d.hi}</div>
+        `;
+        strip.appendChild(div);
+      });
+
+      const modalCards = document.getElementById('modal-forecast-cards');
+      if (modalCards) {
+        modalCards.innerHTML = '';
+        c.days.forEach(d => {
+          const card = document.createElement('div');
+          card.className = 'vision-glass rounded-2xl p-4 text-center space-y-2';
+          card.innerHTML = `
+            <div class="text-xs font-semibold text-white/75">${d.d}</div>
+            <div class="py-1">${weatherTypeSvg(d.type)}</div>
+            <div class="text-sm font-semibold text-white">${d.hi} <span class="text-white/45 font-normal">${d.lo}</span></div>
+          `;
+          modalCards.appendChild(card);
+        });
+      }
+    }
+
+    function switchCity() {
+      cityIdx = (cityIdx + 1) % CITIES.length;
+      saveState();
+      renderWeather();
+      fetchLiveWeather();
+    }
+
+    function cycleTheme() {
+      themeIdx = (themeIdx + 1) % THEMES.length;
+      saveState();
+      applyTheme();
+    }
+
+    function applyTheme() {
+      const t = THEMES[themeIdx];
+      document.getElementById('theme-toolbar-label').textContent = t.name;
+      document.getElementById('ambient-orb').style.opacity = t.mode === 'off' ? '0' : '0.35';
+      initParticles();
+    }
+
+    function toggleRadio() {
+      radioOn = !radioOn;
+      document.getElementById('radio-static-icon').classList.toggle('hidden', radioOn);
+      document.getElementById('radio-anim-icon').classList.toggle('hidden', !radioOn);
+      document.getElementById('radio-label').textContent = radioOn ? 'Lo-Fi ON' : 'Ambiente';
+
+      try {
+        if (radioOn) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          const freqs = [220, 277.18, 329.63, 415.3];
+          audioNodes = freqs.map(f => {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.value = f;
+            gain.gain.value = 0.018;
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            return osc;
+          });
+        } else if (audioCtx) {
+          audioNodes.forEach(n => n.stop());
+          audioCtx.close();
+          audioCtx = null;
+        }
+      } catch (_) {}
+    }
+
+    function cycleSleepTimer() {
+      const steps = [0, 30, 60, 90];
+      sleepMin = steps[(steps.indexOf(sleepMin) + 1) % steps.length];
+      const pill = document.getElementById('sleep-pill');
+      const txt = document.getElementById('widget-sleep-text');
+      if (sleepMin > 0) {
+        pill.classList.remove('hidden');
+        pill.classList.add('flex');
+        document.getElementById('sleep-pill-text').textContent = `${sleepMin}m`;
+        txt.textContent = `Desligar em ${sleepMin}m`;
+        txt.className = 'text-xs text-indigo-300 truncate mt-0.5';
+      } else {
+        pill.classList.add('hidden');
+        pill.classList.remove('flex');
+        txt.textContent = 'Desativado';
+        txt.className = 'text-xs text-white/60 truncate mt-0.5';
+      }
+    }
+
+    function changeGreeting() {
+      userIdx = (userIdx + 1) % USERS.length;
+      saveState();
+      const name = USERS[userIdx];
+      document.getElementById('greeting-text').textContent = name;
+      document.getElementById('avatar-initial').textContent = name[0];
+    }
+
+    function moveFocus(delta) {
+      const apps = getEnabledApps();
+      if (!apps.length) return;
+      focusedIdx = (focusedIdx + delta + apps.length) % apps.length;
+      renderDock();
+    }
+
+    function triggerSelectedApp() {
+      const app = getEnabledApps()[focusedIdx];
+      if (!app) return;
+      document.getElementById('status-toast').innerHTML = `<span class="w-2 h-2 rounded-full bg-white animate-ping"></span><span>A abrir <strong>${app.name}</strong>...</span>`;
+      try {
+        if (typeof Hisense_LaunchApp === 'function') {
+          Hisense_LaunchApp(app.id, app.url);
+          return;
+        }
+      } catch (_) {}
+      if (app.url) {
+        setTimeout(() => { window.location.href = app.url; }, 250);
+      }
+    }
+
+    function renderInputsModal() {
+      const INPUTS = [
+        { name: 'HDMI 1', sub: 'Apple TV / Consola 4K', active: true },
+        { name: 'HDMI 2 (eARC)', sub: 'Soundbar Dolby Atmos', active: true },
+        { name: 'HDMI 3', sub: 'Sem sinal detetado', active: false },
+        { name: 'TV Digital (Antena)', sub: 'Sintonizador DVB-T2', active: true }
+      ];
+      const list = document.getElementById('inputs-list');
+      list.innerHTML = '';
+      INPUTS.forEach(inp => {
+        const btn = document.createElement('button');
+        btn.className = 'vision-glass w-full rounded-2xl p-4 flex items-center justify-between hover:bg-white/15 transition text-left';
+        btn.onclick = () => {
+          document.getElementById('active-input-label').textContent = inp.name;
+          closeModals();
+        };
+        btn.innerHTML = `
+          <div class="flex items-center gap-3">
+            <span class="w-2.5 h-2.5 rounded-full ${inp.active ? 'bg-emerald-400 shadow-[0_0_8px_#34d399]' : 'bg-white/20'}"></span>
+            <div>
+              <div class="text-sm font-semibold text-white">${inp.name}</div>
+              <div class="text-xs text-white/55">${inp.sub}</div>
+            </div>
+          </div>
+          <span class="text-xs text-white/65">${inp.active ? 'Ligado' : 'Vazio'}</span>
+        `;
+        list.appendChild(btn);
+      });
+    }
+
+    function renderControlModal() {
+      const grid = document.getElementById('app-manager-grid');
+      grid.innerHTML = '';
+      ALL_APPS.forEach(app => {
+        const btn = document.createElement('button');
+        btn.className = `rounded-2xl p-3.5 flex items-center justify-between border text-left transition ${
+          app.enabled ? 'vision-glass border-white/25 text-white' : 'bg-white/[0.02] border-white/5 text-white/40'
+        }`;
+        btn.onclick = () => {
+          app.enabled = !app.enabled;
+          saveState();
+          renderControlModal();
+          renderDock();
+        };
+        btn.innerHTML = `
+          <div class="flex items-center gap-3 min-w-0">
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style="background:${app.tileBg}">${app.svg}</div>
+            <div class="truncate">
+              <div class="text-sm font-semibold truncate">${app.name}</div>
+              <div class="text-xs opacity-60">${app.enabled ? 'Na Dock' : 'Ocultada'}</div>
+            </div>
+          </div>
+          <span class="text-xs px-2.5 py-1 rounded-full font-medium ${app.enabled ? 'bg-emerald-500/20 text-emerald-300' : 'bg-white/10 text-white/45'}">
+            ${app.enabled ? 'Ativa' : 'Off'}
+          </span>
+        `;
+        grid.appendChild(btn);
+      });
+    }
+
+    function openModal(type) {
+      closeModals();
+      if (type === 'weather') {
+        renderWeather();
+        document.getElementById('modal-weather').classList.remove('hidden');
+      } else if (type === 'inputs') {
+        renderInputsModal();
+        document.getElementById('modal-inputs').classList.remove('hidden');
+      } else if (type === 'control') {
+        renderControlModal();
+        document.getElementById('modal-control').classList.remove('hidden');
+      }
+    }
+
+    function closeModals() {
+      ['modal-weather', 'modal-inputs', 'modal-control', 'modal-screensaver'].forEach(id => {
+        document.getElementById(id).classList.add('hidden');
+      });
+    }
+
+    function toggleScreensaver() {
+      document.getElementById('modal-screensaver').classList.toggle('hidden');
+    }
+
+    function updateClocks() {
+      const now = new Date();
+      const hh = String(now.getHours()).padStart(2, '0');
+      const mm = String(now.getMinutes()).padStart(2, '0');
+      document.getElementById('tv-clock').textContent = `${hh}:${mm}`;
+      document.getElementById('ss-clock').textContent = `${hh}:${mm}`;
+      document.getElementById('clock-uk').textContent = `${hh}:${mm}`;
+      const spH = String((now.getHours() + 20) % 24).padStart(2, '0');
+      document.getElementById('clock-sp').textContent = `${spH}:${mm}`;
+    }
+
+    const canvas = document.getElementById('ambient-canvas');
+    const ctx = canvas.getContext('2d');
+    let nodes = [];
+
+    function initParticles() {
+      canvas.width = window.innerWidth || 1920;
+      canvas.height = window.innerHeight || 1080;
+      nodes = [];
+      const mode = THEMES[themeIdx].mode;
+      if (mode === 'off') return;
+      const count = mode === 'rain' ? 48 : 30;
+      for (let i = 0; i < count; i++) {
+        nodes.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          r: Math.random() * 1.6 + 0.5,
+          vx: mode === 'rain' ? -0.9 : (Math.random() - 0.5) * 0.25,
+          vy: mode === 'rain' ? Math.random() * 4.5 + 3.5 : (Math.random() - 0.5) * 0.25,
+          a: Math.random() * 0.42 + 0.12
+        });
+      }
+    }
+
+    function tickCanvas() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const mode = THEMES[themeIdx].mode;
+      if (mode !== 'off') {
+        for (let i = 0; i < nodes.length; i++) {
+          const p = nodes[i];
+          p.x += p.vx;
+          p.y += p.vy;
+          if (p.y > canvas.height) p.y = 0;
+          if (p.y < 0) p.y = canvas.height;
+          if (p.x > canvas.width) p.x = 0;
+          if (p.x < 0) p.x = canvas.width;
+
+          if (mode === 'rain') {
+            ctx.strokeStyle = `rgba(186, 230, 253, ${p.a})`;
+            ctx.lineWidth = 1.2;
+            ctx.beginPath();
+            ctx.moveTo(p.x, p.y);
+            ctx.lineTo(p.x - 2.5, p.y + 10);
+            ctx.stroke();
+          } else {
+            ctx.fillStyle = `rgba(255, 255, 255, ${p.a})`;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+      }
+      requestAnimationFrame(tickCanvas);
+    }
+
+    // Full TV Remote KeyCode + Keyboard Handler
+    window.addEventListener('keydown', (e) => {
+      const code = e.keyCode || e.which;
+      if (!document.getElementById('modal-screensaver').classList.contains('hidden')) {
+        closeModals(); e.preventDefault(); return;
+      }
+      if (e.key === 'ArrowRight' || code === 39) { moveFocus(1); e.preventDefault(); }
+      else if (e.key === 'ArrowLeft' || code === 37) { moveFocus(-1); e.preventDefault(); }
+      else if (e.key === 'Enter' || code === 13) { triggerSelectedApp(); e.preventDefault(); }
+      else if (e.key === 'Escape' || e.key === 'Backspace' || code === 27 || code === 461 || code === 8) { closeModals(); e.preventDefault(); }
+      else if (e.key.toLowerCase() === 'c' || code === 406) { openModal('control'); e.preventDefault(); }
+      else if (e.key.toLowerCase() === 'w' || code === 404) { openModal('weather'); e.preventDefault(); }
+      else if (e.key.toLowerCase() === 'm' || code === 403) { cycleTheme(); e.preventDefault(); }
+      else if (e.key.toLowerCase() === 'r' || code === 405) { toggleRadio(); e.preventDefault(); }
+      else if (e.key.toLowerCase() === 'i') { openModal('inputs'); e.preventDefault(); }
+    });
+
+    // Apply initial saved user & theme
+    document.getElementById('greeting-text').textContent = USERS[userIdx];
+    document.getElementById('avatar-initial').textContent = USERS[userIdx][0];
+    updateClocks();
+    setInterval(updateClocks, 15000);
+    renderWeather();
+    fetchLiveWeather();
+    renderDock();
+    setTimeout(() => { applyTheme(); tickCanvas(); }, 80);
+  </script>
+</body>
+</html>
