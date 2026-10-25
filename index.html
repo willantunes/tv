@@ -370,11 +370,42 @@
   </div>
 
   <script>
+    const BRIDGE_BASE = (window.location.port === '8765')
+      ? window.location.origin
+      : 'http://192.168.2.23:8765';
+
+    let bridgeConnected = false;
+    let tvVolume = 9;
+    let autoLaunchEnabled = true;
+
+    async function callBridge(pathAndQuery) {
+      const url = `${BRIDGE_BASE}${pathAndQuery}${pathAndQuery.includes('?') ? '&' : '?'}_t=${Date.now()}`;
+      try {
+        const res = await fetch(url, { mode: 'cors' });
+        if (res.ok) {
+          bridgeConnected = true;
+          return await res.json();
+        }
+      } catch (_) {
+        // Fallback for HTTPS -> HTTP Mixed Content in TV Browser: fire GET via Image beacon
+        try {
+          const img = new Image();
+          img.src = url;
+          bridgeConnected = true;
+        } catch (__) {}
+      }
+      return null;
+    }
+
     const BRAND_SVGS = {
       netflix: `<svg class="w-7 h-7" viewBox="0 0 24 24" fill="none"><path d="M5.5 3h3.6v18H5.5V3zm9.4 0h3.6v18h-3.6V3z" fill="#B20710"/><path d="M5.5 3h3.6l9.4 18h-3.6L5.5 3z" fill="#E50914"/></svg>`,
       youtube: `<svg class="w-7 h-7" viewBox="0 0 24 24" fill="none"><rect x="2" y="4.5" width="20" height="15" rx="4.5" fill="#FF0033"/><polygon points="10 8.5 16 12 10 15.5" fill="#FFFFFF"/></svg>`,
       prime: `<svg class="w-7 h-7" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9.5" fill="#00A8E1" fill-opacity="0.2" stroke="#00A8E1" stroke-width="1.6"/><path d="M6.5 13.5c3.2 2.6 7.8 2.6 11 0" stroke="#38BDF8" stroke-width="2.2" stroke-linecap="round"/><path d="M15.8 12.2l2.3.9-.8 2.3" stroke="#38BDF8" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="9" r="2" fill="#FFFFFF"/></svg>`,
       disney: `<svg class="w-7 h-7" viewBox="0 0 24 24" fill="none"><path d="M4.5 16.5C6.5 9 15.5 7.5 19.5 15" stroke="#60A5FA" stroke-width="2.1" stroke-linecap="round"/><path d="M17.5 5.5v4.5M15.25 7.75h4.5" stroke="#FACC15" stroke-width="2" stroke-linecap="round"/><circle cx="11" cy="15.5" r="2" fill="#FFFFFF"/></svg>`,
+      apple: `<svg class="w-7 h-7" viewBox="0 0 24 24" fill="none"><rect x="2.5" y="4.5" width="19" height="15" rx="4.5" fill="#F8FAFC" fill-opacity="0.16" stroke="#F8FAFC" stroke-width="1.6"/><circle cx="10" cy="12.5" r="3" fill="#FFFFFF"/><path d="M10.5 7.2c.8-1 2-1.2 2.5-1.2-.1 1-.7 1.8-1.5 2.1" stroke="#FFFFFF" stroke-width="1.5" stroke-linecap="round"/><polygon points="15 10.2 18.2 12.2 15 14.2" fill="#FFFFFF"/></svg>`,
+      hbomax: `<svg class="w-7 h-7" viewBox="0 0 24 24" fill="none"><rect x="2.5" y="4.5" width="19" height="15" rx="4.5" fill="#7C3AED" fill-opacity="0.25" stroke="#A78BFA" stroke-width="1.6"/><circle cx="12" cy="12" r="4.2" stroke="#FFFFFF" stroke-width="2"/><circle cx="12" cy="12" r="1.5" fill="#C4B5FD"/></svg>`,
+      plex: `<svg class="w-7 h-7" viewBox="0 0 24 24" fill="none"><rect x="2.5" y="3.5" width="19" height="17" rx="4.5" fill="#F59E0B" fill-opacity="0.2" stroke="#FBBF24" stroke-width="1.6"/><path d="M9.5 7.5h3l3.5 4.5-3.5 4.5h-3L13 12 9.5 7.5z" fill="#FBBF24"/></svg>`,
+      spotify: `<svg class="w-7 h-7" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9.5" fill="#10B981" fill-opacity="0.2" stroke="#34D399" stroke-width="1.6"/><path d="M7.5 10c3.2-1 6.5-.7 9.2.8M8.2 13c2.5-.7 5.2-.5 7.3.6M9 15.8c1.9-.5 3.9-.3 5.5.5" stroke="#34D399" stroke-width="1.9" stroke-linecap="round"/></svg>`,
       rtp: `<svg class="w-7 h-7" viewBox="0 0 24 24" fill="none"><rect x="2.5" y="5.5" width="19" height="13" rx="3.5" fill="#0284C7"/><circle cx="8.2" cy="12" r="2.6" fill="#FFFFFF"/><path d="M13.2 9.5h4.5M13.2 12h3.2M13.2 14.5h4.5" stroke="#FFFFFF" stroke-width="1.9" stroke-linecap="round"/></svg>`,
       stremio: `<svg class="w-7 h-7" viewBox="0 0 24 24" fill="none"><polygon points="12 2.5 21.5 12 12 21.5 2.5 12" fill="url(#stremGrad)"/><polygon points="10.5 8.5 15.8 12 10.5 15.5" fill="#FFFFFF"/><defs><linearGradient id="stremGrad" x1="2.5" y1="2.5" x2="21.5" y2="21.5" gradientUnits="userSpaceOnUse"><stop stop-color="#A855F7"/><stop offset="1" stop-color="#3B82F6"/></linearGradient></defs></svg>`,
       bloat: `<svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="m9 9 6 6m0-6-6 6"/></svg>`
@@ -382,11 +413,11 @@
 
     const ALL_APPS = [
       {
-        id: 'netflix', name: 'Netflix', subtitle: '4K Dolby Vision', url: 'https://www.netflix.com', color: '#E50914',
+        id: 'netflix', nativeApp: 'Netflix', name: 'Netflix', subtitle: 'App Nativa · 4K Dolby', url: 'https://www.netflix.com', color: '#E50914',
         tileBg: 'linear-gradient(145deg, rgba(185, 10, 20, 0.88) 0%, rgba(22, 6, 10, 0.96) 100%)',
         heroBg: 'radial-gradient(110% 90% at 70% 20%, rgba(229, 9, 20, 0.36) 0%, rgba(15, 23, 42, 0.15) 55%, rgba(4, 5, 9, 0.98) 100%)',
-        svg: BRAND_SVGS.netflix, desc: 'Retome as suas séries imediatamente em 4K HDR sem faixas patrocinadas no sistema.',
-        tag: '4K Dolby Vision', subtag: 'Continuar a ver', enabled: true,
+        svg: BRAND_SVGS.netflix, desc: 'Abre diretamente a aplicação nativa 4K HDR da sua Toshiba TV via Mac Mini Bridge.',
+        tag: '4K Nativo · Bridge', subtag: 'Continuar a ver', enabled: true,
         cards: [
           { title: 'Black Mirror · T7', sub: 'Ep. 2 · Restam 24 min', progress: 65, accent: '#E50914' },
           { title: 'Senna', sub: 'Minissérie · 4K Atmos', progress: 35, accent: '#EF4444' },
@@ -394,11 +425,11 @@
         ]
       },
       {
-        id: 'youtube', name: 'YouTube', subtitle: '4K 60fps HDR', url: 'https://www.youtube.com/tv', color: '#FF0033',
+        id: 'youtube', nativeApp: 'YouTube', name: 'YouTube', subtitle: 'App Nativa · 4K 60fps', url: 'https://www.youtube.com/tv', color: '#FF0033',
         tileBg: 'linear-gradient(145deg, rgba(205, 0, 40, 0.88) 0%, rgba(24, 6, 12, 0.96) 100%)',
         heroBg: 'radial-gradient(110% 90% at 70% 20%, rgba(255, 0, 51, 0.32) 0%, rgba(15, 23, 42, 0.15) 55%, rgba(4, 5, 9, 0.98) 100%)',
-        svg: BRAND_SVGS.youtube, desc: 'Subscrições, canais em direto, concertos e vídeos em 4K 60fps.',
-        tag: '60fps HDR', subtag: 'Subscrições & Diretos', enabled: true,
+        svg: BRAND_SVGS.youtube, desc: 'Abre a app nativa YouTube 4K 60fps HDR instalada na sua Toshiba TV.',
+        tag: '60fps HDR Nativo', subtag: 'Subscrições & Diretos', enabled: true,
         cards: [
           { title: 'Costa de Portugal 4K', sub: 'Drone 60fps HDR', progress: 45, accent: '#FF0033' },
           { title: 'Resumo Liga Portugal', sub: 'Desporto · Hoje', progress: 20, accent: '#F43F5E' },
@@ -406,11 +437,11 @@
         ]
       },
       {
-        id: 'prime', name: 'Prime Video', subtitle: 'HDR10+ · Originals', url: 'https://www.primevideo.com', color: '#00A8E1',
+        id: 'prime', nativeApp: 'Prime Video', name: 'Prime Video', subtitle: 'App Nativa · HDR10+', url: 'https://www.primevideo.com', color: '#00A8E1',
         tileBg: 'linear-gradient(145deg, rgba(2, 132, 199, 0.88) 0%, rgba(6, 18, 32, 0.96) 100%)',
         heroBg: 'radial-gradient(110% 90% at 70% 20%, rgba(0, 168, 225, 0.34) 0%, rgba(15, 23, 42, 0.15) 55%, rgba(4, 5, 9, 0.98) 100%)',
-        svg: BRAND_SVGS.prime, desc: 'Amazon Originals, Fallout, The Boys e cinema em casa com X-Ray.',
-        tag: 'HDR10+ Atmos', subtag: 'Incluído no Prime', enabled: true,
+        svg: BRAND_SVGS.prime, desc: 'Abre a app nativa Amazon Prime Video em 4K HDR10+ via Mac Mini Bridge.',
+        tag: 'HDR10+ Nativo', subtag: 'Incluído no Prime', enabled: true,
         cards: [
           { title: 'Fallout', sub: 'T1 Ep. 5 · 4K HDR10+', progress: 55, accent: '#00A8E1' },
           { title: 'The Boys', sub: 'Temporada 4 · UHD', progress: 80, accent: '#38BDF8' },
@@ -418,10 +449,10 @@
         ]
       },
       {
-        id: 'disney', name: 'Disney+', subtitle: 'IMAX Enhanced', url: 'https://www.disneyplus.com', color: '#38BDF8',
+        id: 'disney', nativeApp: 'Disney+', name: 'Disney+', subtitle: 'App Nativa · IMAX', url: 'https://www.disneyplus.com', color: '#38BDF8',
         tileBg: 'linear-gradient(145deg, rgba(29, 78, 216, 0.88) 0%, rgba(7, 12, 30, 0.96) 100%)',
         heroBg: 'radial-gradient(110% 90% at 70% 20%, rgba(56, 189, 248, 0.32) 0%, rgba(15, 23, 42, 0.15) 55%, rgba(4, 5, 9, 0.98) 100%)',
-        svg: BRAND_SVGS.disney, desc: 'FX, Marvel, Star Wars, Pixar e documentários National Geographic em IMAX.',
+        svg: BRAND_SVGS.disney, desc: 'Abre a app nativa Disney+ (App ID 295) diretamente na sua Toshiba TV.',
         tag: 'IMAX Enhanced', subtag: 'Coleções em 4K', enabled: true,
         cards: [
           { title: 'Shōgun', sub: 'FX · 18 Emmys', progress: 95, accent: '#38BDF8' },
@@ -430,11 +461,71 @@
         ]
       },
       {
-        id: 'rtp', name: 'RTP Play', subtitle: 'Em Direto · HD', url: 'https://www.rtp.pt/play/', color: '#0284C7',
+        id: 'apple', nativeApp: 'Apple TV', name: 'Apple TV+', subtitle: 'App Nativa · 4K Dolby', url: 'https://tv.apple.com', color: '#94A3B8',
+        tileBg: 'linear-gradient(145deg, rgba(71, 85, 105, 0.88) 0%, rgba(15, 23, 42, 0.96) 100%)',
+        heroBg: 'radial-gradient(110% 90% at 70% 20%, rgba(148, 163, 184, 0.30) 0%, rgba(15, 23, 42, 0.18) 55%, rgba(4, 5, 9, 0.98) 100%)',
+        svg: BRAND_SVGS.apple, desc: 'Abre a app nativa Apple TV+ (App ID 351) instalada na sua Toshiba TV.',
+        tag: 'Apple Originals 4K', subtag: 'App Nativa TV', enabled: true,
+        cards: [
+          { title: 'Severance · T2', sub: 'Sci-Fi · Dolby Vision', progress: 70, accent: '#E2E8F0' },
+          { title: 'Silo', sub: 'Temporada 2 · 4K', progress: 50, accent: '#94A3B8' },
+          { title: 'Slow Horses', sub: 'Thriller · 4K HDR', progress: 85, accent: '#CBD5E1' }
+        ]
+      },
+      {
+        id: 'hbomax', nativeApp: 'HBO Max', name: 'HBO Max', subtitle: 'App Nativa · 4K UHD', url: 'https://www.max.com', color: '#8B5CF6',
+        tileBg: 'linear-gradient(145deg, rgba(109, 40, 217, 0.88) 0%, rgba(16, 8, 32, 0.96) 100%)',
+        heroBg: 'radial-gradient(110% 90% at 70% 20%, rgba(139, 92, 246, 0.34) 0%, rgba(15, 23, 42, 0.15) 55%, rgba(4, 5, 9, 0.98) 100%)',
+        svg: BRAND_SVGS.hbomax, desc: 'Abre a app nativa HBO Max (App ID 2378) diretamente na sua Toshiba TV.',
+        tag: 'HBO Originals 4K', subtag: 'App Nativa TV', enabled: true,
+        cards: [
+          { title: 'The Last of Us · T2', sub: 'HBO Original · 4K', progress: 60, accent: '#A78BFA' },
+          { title: 'The White Lotus', sub: 'Temporada 3 · HD', progress: 45, accent: '#8B5CF6' },
+          { title: 'Dune: Prophecy', sub: 'Sci-Fi · 4K Atmos', progress: 80, accent: '#C4B5FD' }
+        ]
+      },
+      {
+        id: 'plex', nativeApp: 'Plex', name: 'Plex', subtitle: 'App Nativa · Media', url: 'https://app.plex.tv/tv-vidaa', color: '#F59E0B',
+        tileBg: 'linear-gradient(145deg, rgba(180, 83, 9, 0.88) 0%, rgba(24, 14, 6, 0.96) 100%)',
+        heroBg: 'radial-gradient(110% 90% at 70% 20%, rgba(245, 158, 11, 0.32) 0%, rgba(15, 23, 42, 0.15) 55%, rgba(4, 5, 9, 0.98) 100%)',
+        svg: BRAND_SVGS.plex, desc: 'Abre a app nativa Plex (App ID 42) para streaming local a partir do seu Mac Mini.',
+        tag: 'Direct Play 4K', subtag: 'Servidor Local', enabled: false,
+        cards: [
+          { title: 'Biblioteca Cinema 4K', sub: 'Mac Mini Local Server', progress: 75, accent: '#FBBF24' },
+          { title: 'Séries em Casa', sub: 'Direct Stream', progress: 40, accent: '#F59E0B' },
+          { title: 'Coleção IMAX', sub: 'TrueHD Audio', progress: 90, accent: '#D97706' }
+        ]
+      },
+      {
+        id: 'spotify', nativeApp: 'Spotify : Music & Podcasts', name: 'Spotify', subtitle: 'App Nativa · Música', url: 'https://open.spotify.com', color: '#10B981',
+        tileBg: 'linear-gradient(145deg, rgba(5, 150, 105, 0.88) 0%, rgba(6, 22, 16, 0.96) 100%)',
+        heroBg: 'radial-gradient(110% 90% at 70% 20%, rgba(16, 185, 129, 0.32) 0%, rgba(15, 23, 42, 0.15) 55%, rgba(4, 5, 9, 0.98) 100%)',
+        svg: BRAND_SVGS.spotify, desc: 'Abre a app nativa Spotify TV (App ID 2256) com Spotify Connect.',
+        tag: 'Spotify Connect', subtag: 'Música & Podcasts', enabled: false,
+        cards: [
+          { title: 'Late Night Jazz', sub: 'Playlist · Hi-Fi', progress: 65, accent: '#34D399' },
+          { title: 'Daily Mix 1', sub: 'Para si', progress: 50, accent: '#10B981' },
+          { title: 'Ambient Focus', sub: 'Instrumental', progress: 85, accent: '#059669' }
+        ]
+      },
+      {
+        id: 'globoplay', nativeApp: 'GloboPlay', name: 'Globoplay', subtitle: 'App Nativa · Brasil', url: 'https://globoplay.globo.com', color: '#F97316',
+        tileBg: 'linear-gradient(145deg, rgba(194, 65, 12, 0.88) 0%, rgba(28, 10, 6, 0.96) 100%)',
+        heroBg: 'radial-gradient(110% 90% at 70% 20%, rgba(249, 115, 22, 0.32) 0%, rgba(15, 23, 42, 0.15) 55%, rgba(4, 5, 9, 0.98) 100%)',
+        svg: BRAND_SVGS.rtp, desc: 'Abre a app nativa Globoplay (App ID 338) instalada na sua Toshiba TV.',
+        tag: 'Canais & Novelas', subtag: 'App Nativa TV', enabled: false,
+        cards: [
+          { title: 'TV Globo Ao Vivo', sub: 'Sinal Internacional HD', progress: 100, accent: '#F97316' },
+          { title: 'Séries Originais', sub: '4K HDR', progress: 50, accent: '#FB923C' },
+          { title: 'Cinema Brasileiro', sub: 'Catálogo Completo', progress: 30, accent: '#EA580C' }
+        ]
+      },
+      {
+        id: 'rtp', nativeApp: null, name: 'RTP Play', subtitle: 'Em Direto · HD', url: 'https://www.rtp.pt/play/', color: '#0284C7',
         tileBg: 'linear-gradient(145deg, rgba(3, 105, 161, 0.88) 0%, rgba(6, 15, 28, 0.96) 100%)',
         heroBg: 'radial-gradient(110% 90% at 70% 20%, rgba(2, 132, 199, 0.34) 0%, rgba(15, 23, 42, 0.15) 55%, rgba(4, 5, 9, 0.98) 100%)',
         svg: BRAND_SVGS.rtp, desc: 'Canais portugueses em direto (RTP1, RTP2, RTP3) e séries nacionais on-demand.',
-        tag: 'TV em Direto', subtag: 'Emissão Nacional', enabled: true,
+        tag: 'TV em Direto', subtag: 'Emissão Nacional', enabled: false,
         cards: [
           { title: 'RTP 1 · Em Direto', sub: 'Emissão contínua HD', progress: 100, accent: '#0284C7' },
           { title: 'RTP 3 · Notícias', sub: 'Informação 24h', progress: 100, accent: '#38BDF8' },
@@ -442,20 +533,17 @@
         ]
       },
       {
-        id: 'stremio', name: 'Stremio Web', subtitle: 'Cinema & Media', url: 'https://web.stremio.com', color: '#A855F7',
+        id: 'stremio', nativeApp: null, name: 'Stremio Web', subtitle: 'Cinema & Media', url: 'https://web.stremio.com', color: '#A855F7',
         tileBg: 'linear-gradient(145deg, rgba(109, 40, 217, 0.88) 0%, rgba(16, 8, 32, 0.96) 100%)',
         heroBg: 'radial-gradient(110% 90% at 70% 20%, rgba(168, 85, 247, 0.34) 0%, rgba(15, 23, 42, 0.15) 55%, rgba(4, 5, 9, 0.98) 100%)',
         svg: BRAND_SVGS.stremio, desc: 'A sua biblioteca pessoal de cinema, calendário de episódios e servidor doméstico.',
-        tag: 'TrueHD · 4K', subtag: 'Media Center', enabled: true,
+        tag: 'TrueHD · 4K', subtag: 'Media Center', enabled: false,
         cards: [
           { title: 'Dune: Part Two', sub: '4K HDR · 2h 46m', progress: 75, accent: '#A855F7' },
           { title: 'Severance · T2', sub: 'Novo Episódio', progress: 35, accent: '#C084FC' },
           { title: 'Oppenheimer', sub: 'IMAX 4K · Biblioteca', progress: 100, accent: '#9333EA' }
         ]
-      },
-      { id: 'vidaafree', name: 'VIDAA Free', subtitle: 'Pré-instalada', color: '#64748B', tileBg: '#1E293B', heroBg: '', svg: BRAND_SVGS.bloat, desc: 'App promocional desativada.', tag: 'Oculta', subtag: '', enabled: false, cards: [] },
-      { id: 'vidaaart', name: 'VIDAA Art', subtitle: 'Pré-instalada', color: '#64748B', tileBg: '#1E293B', heroBg: '', svg: BRAND_SVGS.bloat, desc: 'App promocional desativada.', tag: 'Oculta', subtag: '', enabled: false, cards: [] },
-      { id: 'kidoodle', name: 'Kidoodle.TV', subtitle: 'Pré-instalada', color: '#64748B', tileBg: '#1E293B', heroBg: '', svg: BRAND_SVGS.bloat, desc: 'App promocional desativada.', tag: 'Oculta', subtag: '', enabled: false, cards: [] }
+      }
     ];
 
     const CITIES = [
@@ -498,9 +586,8 @@
     let sleepMin = 0;
     const USERS = ['William', 'Bianca', 'Cinema', 'Família'];
 
-    // Restore saved app visibility from TV localStorage
     try {
-      const savedApps = JSON.parse(localStorage.getItem('cleantv_apps') || 'null');
+      const savedApps = JSON.parse(localStorage.getItem('cleantv_apps_v2') || 'null');
       if (savedApps) {
         ALL_APPS.forEach(a => {
           if (typeof savedApps[a.id] === 'boolean') a.enabled = savedApps[a.id];
@@ -512,7 +599,7 @@
       try {
         const map = {};
         ALL_APPS.forEach(a => map[a.id] = a.enabled);
-        localStorage.setItem('cleantv_apps', JSON.stringify(map));
+        localStorage.setItem('cleantv_apps_v2', JSON.stringify(map));
         localStorage.setItem('cleantv_city', String(cityIdx));
         localStorage.setItem('cleantv_theme', String(themeIdx));
         localStorage.setItem('cleantv_user', String(userIdx));
@@ -530,7 +617,7 @@
     }
 
     function getEnabledApps() {
-      return ALL_APPS.filter(a => a.enabled);
+      return ALL_APPS.filter(a => a.enabled).slice(0, 6);
     }
 
     function renderDock() {
@@ -575,7 +662,9 @@
       });
 
       updateHero();
-      document.getElementById('widget-apps-count').textContent = `${apps.length} apps · Limpo`;
+      document.getElementById('widget-apps-count').textContent = bridgeConnected
+        ? `Mac Bridge · Ativo`
+        : `${apps.length} apps · Ativo`;
     }
 
     function updateHero() {
@@ -721,7 +810,7 @@
       } catch (_) {}
     }
 
-    function cycleSleepTimer() {
+    async function cycleSleepTimer() {
       const steps = [0, 30, 60, 90];
       sleepMin = steps[(steps.indexOf(sleepMin) + 1) % steps.length];
       const pill = document.getElementById('sleep-pill');
@@ -730,7 +819,7 @@
         pill.classList.remove('hidden');
         pill.classList.add('flex');
         document.getElementById('sleep-pill-text').textContent = `${sleepMin}m`;
-        txt.textContent = `Desligar em ${sleepMin}m`;
+        txt.textContent = `TV desliga em ${sleepMin}m`;
         txt.className = 'text-xs text-indigo-300 truncate mt-0.5';
       } else {
         pill.classList.add('hidden');
@@ -738,6 +827,7 @@
         txt.textContent = 'Desativado';
         txt.className = 'text-xs text-white/60 truncate mt-0.5';
       }
+      await callBridge(`/sleep?minutes=${sleepMin}`);
     }
 
     function changeGreeting() {
@@ -755,54 +845,88 @@
       renderDock();
     }
 
-    function triggerSelectedApp() {
+    async function triggerSelectedApp() {
       const app = getEnabledApps()[focusedIdx];
       if (!app) return;
-      document.getElementById('status-toast').innerHTML = `<span class="w-2 h-2 rounded-full bg-white animate-ping"></span><span>A abrir <strong>${app.name}</strong>...</span>`;
-      try {
-        if (typeof Hisense_LaunchApp === 'function') {
-          Hisense_LaunchApp(app.id, app.url);
-          return;
-        }
-      } catch (_) {}
+      document.getElementById('status-toast').innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span><span>A abrir <strong>${app.name}</strong> na Toshiba TV via Mac Mini Bridge...</span>`;
+
+      if (app.nativeApp) {
+        const res = await callBridge(`/launch?app=${encodeURIComponent(app.nativeApp)}`);
+        if (res && res.ok) return;
+      }
       if (app.url) {
-        setTimeout(() => { window.location.href = app.url; }, 250);
+        setTimeout(() => { window.location.href = app.url; }, 350);
       }
     }
 
     function renderInputsModal() {
       const INPUTS = [
-        { name: 'HDMI 1', sub: 'Apple TV / Consola 4K', active: true },
-        { name: 'HDMI 2 (eARC)', sub: 'Soundbar Dolby Atmos', active: true },
-        { name: 'HDMI 3', sub: 'Sem sinal detetado', active: false },
-        { name: 'TV Digital (Antena)', sub: 'Sintonizador DVB-T2', active: true }
+        { id: 'HDMI1', name: 'HDMI 1', sub: 'Mudar entrada física para HDMI 1', active: true },
+        { id: 'HDMI2', name: 'HDMI 2 (eARC)', sub: 'Mudar entrada física para HDMI 2', active: true },
+        { id: 'HDMI3', name: 'HDMI 3', sub: 'Mudar entrada física para HDMI 3', active: true },
+        { id: 'TV', name: 'TV Digital (Canais)', sub: 'Sintonizador de Canais da TV', active: true }
       ];
       const list = document.getElementById('inputs-list');
       list.innerHTML = '';
       INPUTS.forEach(inp => {
         const btn = document.createElement('button');
         btn.className = 'vision-glass w-full rounded-2xl p-4 flex items-center justify-between hover:bg-white/15 transition text-left';
-        btn.onclick = () => {
+        btn.onclick = async () => {
           document.getElementById('active-input-label').textContent = inp.name;
+          document.getElementById('status-toast').innerHTML = `<span class="w-2 h-2 rounded-full bg-sky-400 animate-ping"></span><span>A mudar a TV para <strong>${inp.name}</strong>...</span>`;
           closeModals();
+          await callBridge(`/source?id=${encodeURIComponent(inp.id)}`);
         };
         btn.innerHTML = `
           <div class="flex items-center gap-3">
-            <span class="w-2.5 h-2.5 rounded-full ${inp.active ? 'bg-emerald-400 shadow-[0_0_8px_#34d399]' : 'bg-white/20'}"></span>
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]"></span>
             <div>
               <div class="text-sm font-semibold text-white">${inp.name}</div>
               <div class="text-xs text-white/55">${inp.sub}</div>
             </div>
           </div>
-          <span class="text-xs text-white/65">${inp.active ? 'Ligado' : 'Vazio'}</span>
+          <span class="text-xs text-sky-300 font-medium">Mudar ➔</span>
         `;
         list.appendChild(btn);
       });
     }
 
+    async function adjustTvVolume(delta) {
+      tvVolume = Math.max(0, Math.min(100, tvVolume + delta));
+      const el = document.getElementById('ctrl-vol-val');
+      if (el) el.textContent = `${tvVolume}%`;
+      await callBridge(`/volume?val=${tvVolume}`);
+    }
+
+    async function sendTvKey(key) {
+      await callBridge(`/key?key=${encodeURIComponent(key)}`);
+    }
+
     function renderControlModal() {
       const grid = document.getElementById('app-manager-grid');
       grid.innerHTML = '';
+
+      // Top hardware control strip inside modal
+      const hwBar = document.createElement('div');
+      hwBar.className = 'col-span-3 vision-glass rounded-2xl p-4 flex items-center justify-between gap-4 mb-1';
+      hwBar.innerHTML = `
+        <div class="flex items-center gap-3">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]"></span>
+          <div>
+            <div class="text-sm font-semibold text-white">Mac Mini Bridge · Toshiba TV (192.168.2.9)</div>
+            <div class="text-xs text-white/55">Controlo nativo 4K MQTT + UPnP ativo · Auto-Boot CleanTV ligado</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="adjustTvVolume(-2)" class="vision-glass px-3 py-1.5 rounded-xl text-xs font-semibold text-white hover:bg-white/15">Vol -</button>
+          <span id="ctrl-vol-val" class="text-xs font-semibold text-sky-300 w-10 text-center">${tvVolume}%</span>
+          <button onclick="adjustTvVolume(2)" class="vision-glass px-3 py-1.5 rounded-xl text-xs font-semibold text-white hover:bg-white/15">Vol +</button>
+          <button onclick="sendTvKey('KEY_MUTE')" class="vision-glass px-3 py-1.5 rounded-xl text-xs font-semibold text-white hover:bg-white/15">Mute</button>
+          <button onclick="sendTvKey('KEY_POWER')" class="px-3 py-1.5 rounded-xl bg-rose-500/25 border border-rose-400/30 text-xs font-semibold text-rose-200 hover:bg-rose-500/40">Desligar TV</button>
+        </div>
+      `;
+      grid.appendChild(hwBar);
+
       ALL_APPS.forEach(app => {
         const btn = document.createElement('button');
         btn.className = `rounded-2xl p-3.5 flex items-center justify-between border text-left transition ${
@@ -819,7 +943,7 @@
             <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style="background:${app.tileBg}">${app.svg}</div>
             <div class="truncate">
               <div class="text-sm font-semibold truncate">${app.name}</div>
-              <div class="text-xs opacity-60">${app.enabled ? 'Na Dock' : 'Ocultada'}</div>
+              <div class="text-xs opacity-60">${app.enabled ? 'Na Dock (Máx 6)' : 'Ocultada'}</div>
             </div>
           </div>
           <span class="text-xs px-2.5 py-1 rounded-full font-medium ${app.enabled ? 'bg-emerald-500/20 text-emerald-300' : 'bg-white/10 text-white/45'}">
@@ -919,7 +1043,6 @@
       requestAnimationFrame(tickCanvas);
     }
 
-    // Full TV Remote KeyCode + Keyboard Handler
     window.addEventListener('keydown', (e) => {
       const code = e.keyCode || e.which;
       if (!document.getElementById('modal-screensaver').classList.contains('hidden')) {
@@ -936,7 +1059,15 @@
       else if (e.key.toLowerCase() === 'i') { openModal('inputs'); e.preventDefault(); }
     });
 
-    // Apply initial saved user & theme
+    async function syncBridgeStatus() {
+      const st = await callBridge('/status');
+      if (st && st.ok) {
+        bridgeConnected = true;
+        if (typeof st.volume === 'number') tvVolume = st.volume;
+        document.getElementById('widget-apps-count').textContent = 'Mac Bridge · Ativo';
+      }
+    }
+
     document.getElementById('greeting-text').textContent = USERS[userIdx];
     document.getElementById('avatar-initial').textContent = USERS[userIdx][0];
     updateClocks();
@@ -944,6 +1075,8 @@
     renderWeather();
     fetchLiveWeather();
     renderDock();
+    syncBridgeStatus();
+    setInterval(syncBridgeStatus, 10000);
     setTimeout(() => { applyTheme(); tickCanvas(); }, 80);
   </script>
 </body>
