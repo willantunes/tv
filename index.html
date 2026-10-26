@@ -1,1181 +1,1540 @@
 <!DOCTYPE html>
-<html lang="pt">
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>CleanTV — Toshiba VisionOS Home</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    :root {
-      --spring: cubic-bezier(0.22, 1, 0.36, 1);
-      --accent-glow: #e50914;
-    }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>CleanTV OS — Will & Creator Edition</title>
+<style>
+  :root {
+    --bg-deep: #05070d;
+    --glass: rgba(18, 23, 38, 0.68);
+    --glass-hi: rgba(34, 44, 72, 0.85);
+    --border: rgba(255, 255, 255, 0.09);
+    --border-focus: rgba(255, 255, 255, 0.95);
+    --accent: #38bdf8;
+    --accent-pink: #f43f5e;
+    --accent-purple: #a855f7;
+    --accent-emerald: #10b981;
+    --accent-amber: #f59e0b;
+    --text: #f8fafc;
+    --muted: #94a3b8;
+  }
 
-    * {
-      box-sizing: border-box;
-      user-select: none;
-      -webkit-user-select: none;
-      outline: none;
-    }
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: none !important;
+  }
 
-    html, body {
-      margin: 0;
-      padding: 0;
-      width: 100vw;
-      height: 100vh;
-      overflow: hidden;
-      background-color: #040509;
-      color: #ffffff;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      -webkit-font-smoothing: antialiased;
-    }
+  html, body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: var(--bg-deep);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
 
-    .gpu-layer {
-      will-change: transform, opacity;
-      transform: translateZ(0);
-      backface-visibility: hidden;
-    }
+  /* Dynamic Animated Ambient Canvas */
+  #ambient-bg {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    background:
+      radial-gradient(circle at 18% 22%, var(--orb-1, rgba(56, 189, 248, 0.22)) 0%, transparent 48%),
+      radial-gradient(circle at 82% 18%, var(--orb-2, rgba(168, 85, 247, 0.20)) 0%, transparent 50%),
+      radial-gradient(circle at 50% 85%, var(--orb-3, rgba(244, 63, 94, 0.15)) 0%, transparent 55%),
+      linear-gradient(160deg, #04060b 0%, #090d18 55%, #05070e 100%);
+    transition: background 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+  }
 
-    .vision-glass {
-      background: linear-gradient(180deg, rgba(255, 255, 255, 0.095) 0%, rgba(255, 255, 255, 0.035) 100%);
-      box-shadow:
-        inset 0 1px 0 0 rgba(255, 255, 255, 0.22),
-        inset 0 -1px 0 0 rgba(255, 255, 255, 0.04),
-        0 14px 32px -8px rgba(0, 0, 0, 0.65);
-      border: 1px solid rgba(255, 255, 255, 0.11);
-      transition: transform 0.32s var(--spring), box-shadow 0.32s var(--spring), border-color 0.25s ease, background 0.25s ease;
-    }
+  .aurora-mesh {
+    position: fixed;
+    inset: -20%;
+    z-index: 0;
+    background: conic-gradient(from 0deg at 50% 50%, rgba(56,189,248,0.06), rgba(168,85,247,0.07), rgba(244,63,94,0.06), rgba(16,185,129,0.05), rgba(56,189,248,0.06));
+    filter: blur(90px);
+    animation: spinAurora 28s linear infinite;
+    pointer-events: none;
+  }
 
-    .vision-glass-dark {
-      background: linear-gradient(180deg, rgba(16, 18, 26, 0.96) 0%, rgba(9, 10, 15, 0.98) 100%);
-      box-shadow:
-        inset 0 1px 0 0 rgba(255, 255, 255, 0.18),
-        0 28px 64px -12px rgba(0, 0, 0, 0.92);
-      border: 1px solid rgba(255, 255, 255, 0.14);
-    }
+  @keyframes spinAurora {
+    0% { transform: rotate(0deg) scale(1); }
+    50% { transform: rotate(180deg) scale(1.08); }
+    100% { transform: rotate(360deg) scale(1); }
+  }
 
-    .tv-focused {
-      transform: translate3d(0, -4px, 0) scale(1.035) !important;
-      border-color: rgba(255, 255, 255, 0.95) !important;
-      box-shadow:
-        inset 0 1.5px 0 0 rgba(255, 255, 255, 0.75),
-        0 20px 40px -8px rgba(0, 0, 0, 0.92),
-        0 0 0 2.5px rgba(255, 255, 255, 0.95),
-        0 8px 30px -4px var(--accent-glow) !important;
-      z-index: 25 !important;
-    }
+  /* Main App Shell */
+  .shell {
+    position: relative;
+    z-index: 2;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding: 28px 46px 26px;
+    justify-content: space-between;
+  }
 
-    .app-tile {
-      transition: transform 0.38s var(--spring), box-shadow 0.38s var(--spring), border-color 0.25s ease, opacity 0.25s ease;
-      box-shadow:
-        inset 0 1px 0 0 rgba(255, 255, 255, 0.22),
-        0 8px 20px -6px rgba(0, 0, 0, 0.6);
-    }
+  /* Top Bar */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+  }
 
-    .tile-shine {
-      background: linear-gradient(115deg, transparent 20%, rgba(255,255,255,0.22) 48%, rgba(255,255,255,0.0) 60%);
-      transform: translateX(-130%);
-      transition: transform 0.6s var(--spring);
-    }
-    .tv-focused .tile-shine {
-      transform: translateX(130%);
-    }
+  .brand-cluster {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
 
-    @keyframes heroFade {
-      from { opacity: 0; transform: translate3d(0, 6px, 0); }
-      to   { opacity: 1; transform: translate3d(0, 0, 0); }
-    }
-    .hero-animate { animation: heroFade 0.38s var(--spring) forwards; }
+  .brand-logo {
+    width: 42px;
+    height: 42px;
+    border-radius: 13px;
+    background: linear-gradient(135deg, #38bdf8, #818cf8, #f43f5e);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    font-size: 18px;
+    letter-spacing: -0.5px;
+    box-shadow: 0 8px 25px rgba(56, 189, 248, 0.35);
+  }
 
-    @keyframes meshBreathe {
-      0%, 100% { transform: translate3d(0%, 0%, 0) scale(1); }
-      50%      { transform: translate3d(3%, -2%, 0) scale(1.06); }
-    }
-    .aurora-orb {
-      animation: meshBreathe 14s ease-in-out infinite;
-      transition: background 0.7s ease;
-    }
+  .brand-title {
+    font-size: 19px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+  }
 
-    @keyframes spinSlow {
-      from { transform: rotate(0deg); }
-      to   { transform: rotate(360deg); }
-    }
-    @keyframes eqPulse {
-      0%, 100% { transform: scaleY(0.3); }
-      50%      { transform: scaleY(1); }
-    }
-    .sun-spin { transform-origin: center; animation: spinSlow 24s linear infinite; }
-    .eq-1 { transform-origin: bottom; animation: eqPulse 0.65s ease-in-out infinite; }
-    .eq-2 { transform-origin: bottom; animation: eqPulse 0.48s ease-in-out infinite 0.15s; }
-    .eq-3 { transform-origin: bottom; animation: eqPulse 0.78s ease-in-out infinite 0.25s; }
+  .brand-sub {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    margin-top: 2px;
+  }
 
-    @keyframes screensaverDrift {
-      0%, 100% { transform: translate3d(0px, 0px, 0); }
-      25%      { transform: translate3d(36px, -22px, 0); }
-      50%      { transform: translate3d(-20px, 26px, 0); }
-      75%      { transform: translate3d(-32px, -16px, 0); }
-    }
-    .ss-drift { animation: screensaverDrift 28s ease-in-out infinite; }
-  </style>
+  /* Navigation Pill Tabs (Row 0) */
+  .nav-pills {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(15, 20, 34, 0.72);
+    border: 1px solid var(--border);
+    padding: 6px;
+    border-radius: 999px;
+    backdrop-filter: blur(20px);
+  }
+
+  .nav-pill {
+    padding: 9px 20px;
+    border-radius: 999px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--muted);
+    transition: all 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 2px solid transparent;
+  }
+
+  .nav-pill.active-tab {
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+  }
+
+  .focusable.focused {
+    transform: scale(1.055);
+    border-color: var(--border-focus) !important;
+    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.45), 0 18px 40px -10px rgba(0, 0, 0, 0.75) !important;
+    z-index: 10;
+  }
+
+  .nav-pill.focused {
+    background: #fff !important;
+    color: #06080f !important;
+    transform: scale(1.06);
+  }
+
+  /* Status Cluster */
+  .status-cluster {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .status-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 14px;
+    border-radius: 999px;
+    background: rgba(15, 20, 34, 0.7);
+    border: 1px solid var(--border);
+    font-size: 12px;
+    color: #cbd5e1;
+    font-weight: 500;
+  }
+
+  .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #10b981;
+    box-shadow: 0 0 10px #10b981;
+  }
+
+  .clock {
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Dynamic Stage Area */
+  .stage {
+    flex: 1;
+    display: none;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 18px 0 10px;
+    animation: fadeStage 0.28s ease-out;
+  }
+
+  .stage.active {
+    display: flex;
+  }
+
+  @keyframes fadeStage {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* HERO BANNER */
+  .hero-banner {
+    position: relative;
+    border-radius: 26px;
+    padding: 28px 34px;
+    background: linear-gradient(125deg, rgba(24, 32, 56, 0.84) 0%, rgba(12, 16, 28, 0.9) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.11);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    overflow: hidden;
+    min-height: 175px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+  }
+
+  .hero-left {
+    max-width: 62%;
+    z-index: 2;
+  }
+
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    background: rgba(56, 189, 248, 0.18);
+    color: #38bdf8;
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    margin-bottom: 10px;
+  }
+
+  .hero-title {
+    font-size: 34px;
+    font-weight: 800;
+    letter-spacing: -0.8px;
+    line-height: 1.1;
+    margin-bottom: 8px;
+  }
+
+  .hero-desc {
+    font-size: 14.5px;
+    color: #cbd5e1;
+    line-height: 1.45;
+  }
+
+  .hero-right {
+    display: flex;
+    gap: 14px;
+    z-index: 2;
+  }
+
+  .stat-ring-card {
+    background: rgba(8, 12, 22, 0.65);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 14px 18px;
+    min-width: 130px;
+    text-align: center;
+  }
+
+  .stat-ring-val {
+    font-size: 22px;
+    font-weight: 800;
+    color: #fff;
+  }
+
+  .stat-ring-lbl {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-top: 4px;
+  }
+
+  /* APP DECK GRID */
+  .section-label {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.4px;
+    color: var(--muted);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .cards-row {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 16px;
+  }
+
+  .app-card {
+    position: relative;
+    height: 132px;
+    border-radius: 22px;
+    padding: 18px;
+    background: var(--glass);
+    border: 2px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: all 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+    overflow: hidden;
+  }
+
+  .app-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: var(--card-grad, linear-gradient(135deg, rgba(56,189,248,0.18), transparent));
+    opacity: 0.85;
+    z-index: 0;
+  }
+
+  .app-card > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .app-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    font-size: 18px;
+    background: rgba(255, 255, 255, 0.12);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+  }
+
+  .app-name {
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: -0.2px;
+  }
+
+  .app-tag {
+    font-size: 11px;
+    color: #cbd5e1;
+    opacity: 0.85;
+  }
+
+  /* QUICK ACTION BAR (Row 2) */
+  .action-row {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 14px;
+  }
+
+  .action-pill {
+    padding: 14px 16px;
+    border-radius: 18px;
+    background: rgba(16, 22, 37, 0.78);
+    border: 2px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: all 0.2s ease;
+  }
+
+  .action-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 17px;
+  }
+
+  .action-title {
+    font-size: 13.5px;
+    font-weight: 700;
+  }
+
+  .action-sub {
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  /* CREATOR STUDIO STAGE (Wife's Hub) */
+  .studio-grid {
+    display: grid;
+    grid-template-columns: 310px 1fr 320px;
+    gap: 20px;
+    height: 100%;
+    align-items: stretch;
+  }
+
+  .studio-panel {
+    background: var(--glass);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  /* 9:16 Safe-Zone Phone Simulator in Center */
+  .phone-stage-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    background: rgba(10, 14, 24, 0.75);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .phone-916 {
+    width: 245px;
+    height: 435px;
+    border-radius: 28px;
+    border: 3px solid rgba(255, 255, 255, 0.28);
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(160deg, #f43f5e 0%, #8b5cf6 50%, #0ea5e9 100%);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65);
+    flex-shrink: 0;
+  }
+
+  .phone-video-sim {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 24px;
+    font-weight: 800;
+    font-size: 18px;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+  }
+
+  /* TikTok / IG Reels Safe Zone Mask Overlays */
+  .safezone-top {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 54px;
+    background: rgba(244, 63, 94, 0.32);
+    border-bottom: 1.5px dashed rgba(255, 255, 255, 0.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+  }
+
+  .safezone-right {
+    position: absolute;
+    top: 130px;
+    right: 0;
+    bottom: 95px;
+    width: 54px;
+    background: rgba(244, 63, 94, 0.35);
+    border-left: 1.5px dashed rgba(255, 255, 255, 0.75);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-around;
+    padding: 12px 0;
+    font-size: 14px;
+  }
+
+  .safezone-bottom {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    height: 95px;
+    background: rgba(244, 63, 94, 0.38);
+    border-top: 1.5px dashed rgba(255, 255, 255, 0.75);
+    padding: 10px 14px;
+    font-size: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .safezone-clean {
+    position: absolute;
+    top: 54px;
+    left: 10px;
+    right: 54px;
+    bottom: 95px;
+    border: 1.5px solid rgba(16, 185, 129, 0.85);
+    border-radius: 10px;
+    pointer-events: none;
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-start;
+    padding: 6px 8px;
+    font-size: 9px;
+    color: #a7f3d0;
+    background: rgba(16, 185, 129, 0.06);
+  }
+
+  /* Fullscreen Studio Backdrop / Teleprompter Modal */
+  #fullscreen-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #fullscreen-modal.open {
+    display: flex;
+  }
+
+  .prompter-text {
+    max-width: 82vw;
+    font-size: 54px;
+    font-weight: 800;
+    line-height: 1.38;
+    text-align: center;
+    color: #fff;
+    text-shadow: 0 6px 24px rgba(0,0,0,0.8);
+    transition: transform 0.25s linear;
+  }
+
+  .modal-hint {
+    position: fixed;
+    bottom: 26px;
+    right: 36px;
+    background: rgba(0, 0, 0, 0.55);
+    border: 1px solid rgba(255,255,255,0.15);
+    padding: 8px 16px;
+    border-radius: 999px;
+    font-size: 12px;
+    color: rgba(255,255,255,0.75);
+    backdrop-filter: blur(12px);
+  }
+
+  /* Floating Live Dev HUD Notification Toast */
+  #hud-toast {
+    position: fixed;
+    top: 28px;
+    right: 38px;
+    z-index: 200;
+    min-width: 340px;
+    background: rgba(12, 17, 30, 0.92);
+    border: 1.5px solid #38bdf8;
+    border-radius: 18px;
+    padding: 16px 20px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 30px rgba(56, 189, 248, 0.3);
+    backdrop-filter: blur(20px);
+    transform: translateX(130%);
+    transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  #hud-toast.visible {
+    transform: translateX(0);
+  }
+
+  /* Bottom Remote Legend */
+  .footer-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .key-hints {
+    display: flex;
+    gap: 18px;
+  }
+
+  .key-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    font-weight: 700;
+    font-size: 11px;
+    margin-right: 5px;
+  }
+</style>
 </head>
 <body>
 
-  <!-- FULLSCREEN 16:9 TV STAGE -->
-  <div id="tv-screen" class="relative w-screen h-screen overflow-hidden bg-[#040509] text-white grid grid-rows-[auto_1fr_auto] gap-6 px-10 py-8 lg:px-14 lg:py-10 gpu-layer">
+<div id="ambient-bg"></div>
+<div class="aurora-mesh"></div>
 
-    <!-- Layer 1: Dynamic Hero Backdrop -->
-    <div id="hero-backdrop" class="pointer-events-none absolute inset-0 transition-opacity duration-700 opacity-90"
-         style="background: radial-gradient(110% 90% at 70% 20%, rgba(229, 9, 20, 0.34) 0%, rgba(15, 23, 42, 0.15) 55%, rgba(4, 5, 9, 0.98) 100%);">
-    </div>
+<!-- Live Floating HUD Alert -->
+<div id="hud-toast">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+    <span id="hud-toast-tag" style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#38bdf8;">SYSTEM HUD</span>
+    <span style="font-size:11px;color:#94a3b8;">Just now</span>
+  </div>
+  <div id="hud-toast-title" style="font-size:15px;font-weight:700;color:#fff;margin-bottom:2px;">CleanTV OS Ready</div>
+  <div id="hud-toast-msg" style="font-size:12.5px;color:#cbd5e1;">Xiaomi Box + Toshiba 4K + Mac Bridge Linked</div>
+</div>
 
-    <!-- Layer 2: Floating GPU Ambient Orb -->
-    <div id="ambient-orb" class="pointer-events-none absolute -top-24 right-12 w-[48%] h-[62%] rounded-full blur-3xl opacity-35 aurora-orb gpu-layer"
-         style="background: radial-gradient(circle, #E50914 0%, transparent 70%);">
-    </div>
+<!-- Fullscreen Studio Backdrop / Teleprompter Overlay -->
+<div id="fullscreen-modal">
+  <div id="modal-content" style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px;"></div>
+  <div class="modal-hint">▲/▼ Adjust / Scroll • ◀/▶ Change Preset • <b>BACK</b> Exit Fullscreen</div>
+</div>
 
-    <!-- Layer 3: Lightweight 60fps Canvas -->
-    <canvas id="ambient-canvas" class="pointer-events-none absolute inset-0 w-full h-full z-0 opacity-60"></canvas>
-
-    <!-- Vignette Scrim -->
-    <div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#040509] via-transparent to-[#040509]/50"></div>
-
-    <!-- ================= ROW 1: SYMMETRIC TOP NAVIGATION BAR ================= -->
-    <header class="relative z-10 grid grid-cols-6 gap-4 items-center">
-      <div class="col-span-4 flex items-center gap-3">
-        <button id="top-0" onclick="changeGreeting()" class="vision-glass h-11 rounded-full pl-2 pr-4 flex items-center gap-2.5">
-          <div class="w-7 h-7 rounded-full bg-gradient-to-tr from-indigo-500 to-sky-400 flex items-center justify-center text-xs font-bold text-white">
-            <span id="avatar-initial">W</span>
-          </div>
-          <span id="greeting-text" class="text-sm font-semibold text-white/95 tracking-wide">William</span>
-        </button>
-
-        <button id="top-1" onclick="openModal('weather')" class="vision-glass h-11 rounded-full px-4 flex items-center gap-2.5">
-          <svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none">
-            <circle class="sun-spin" cx="9.5" cy="9" r="3.5" fill="#FBBF24"/>
-            <path d="M17.5 18.5H9a4 4 0 0 1-.4-7.98A5 5 0 0 1 18 11.5a3.5 3.5 0 0 1-.5 7Z" fill="#F8FAFC"/>
-          </svg>
-          <span id="weather-temp" class="text-sm font-semibold text-white">19°</span>
-          <span class="text-white/30 text-xs">·</span>
-          <span id="weather-city" class="text-sm text-white/75">Lisboa</span>
-        </button>
-
-        <button id="top-2" onclick="cycleTheme()" class="vision-glass h-11 rounded-full px-4 flex items-center gap-2 text-sm font-medium text-white/85">
-          <svg class="w-4 h-4 text-sky-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a7 7 0 1 0 10 10"/></svg>
-          <span id="theme-toolbar-label">Cinema Glow</span>
-        </button>
-
-        <button id="sleep-pill" onclick="cycleSleepTimer()" class="hidden vision-glass h-11 rounded-full px-3.5 items-center gap-1.5 text-sm text-indigo-200">
-          <svg class="w-4 h-4 text-indigo-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
-          <span id="sleep-pill-text">60m</span>
-        </button>
-      </div>
-
-      <div class="col-span-2 flex items-center justify-end gap-2.5">
-        <button id="top-3" onclick="toggleRadio()" class="vision-glass h-11 rounded-full px-4 flex items-center gap-2 text-sm font-medium text-white/90">
-          <svg id="radio-static-icon" class="w-4 h-4 text-white/75" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 10v3"/><path d="M6 6v11"/><path d="M10 3v18"/><path d="M14 8v7"/><path d="M18 5v13"/><path d="M22 10v3"/></svg>
-          <svg id="radio-anim-icon" class="hidden w-4 h-4 text-emerald-400" viewBox="0 0 24 24" fill="currentColor">
-            <rect class="eq-1" x="3" y="6" width="3.5" height="14" rx="1.5"/>
-            <rect class="eq-2" x="10.2" y="3" width="3.5" height="17" rx="1.5"/>
-            <rect class="eq-3" x="17.5" y="8" width="3.5" height="12" rx="1.5"/>
-          </svg>
-          <span id="radio-label">Ambiente</span>
-        </button>
-
-        <button id="top-4" onclick="openModal('inputs')" class="vision-glass h-11 rounded-full px-4 flex items-center gap-2 text-sm font-medium text-white/90">
-          <svg class="w-4 h-4 text-white/75" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="12" rx="2"/><path d="M6 20h12"/><path d="M12 16v4"/></svg>
-          <span id="active-input-label">HDMI</span>
-        </button>
-
-        <button id="top-5" onclick="openModal('control')" class="vision-glass w-11 h-11 rounded-full flex items-center justify-center text-white/90" title="Painel de Controlo">
-          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
-        </button>
-
-        <div class="pl-3 ml-1 border-l border-white/15 text-right">
-          <div id="tv-clock" class="text-2xl font-light tracking-tight text-white leading-none">14:05</div>
-          <div id="tv-date" class="text-xs text-white/45 font-medium leading-none mt-1">Dom, 25 Out</div>
-        </div>
-      </div>
-    </header>
-
-    <!-- ================= ROW 2: SYMMETRIC 6-COLUMN CENTER STAGE ================= -->
-    <main class="relative z-10 grid grid-cols-6 gap-4 items-stretch my-auto">
-
-      <!-- Left 4 Columns: Hero Stage -->
-      <div id="hero-container" class="col-span-4 flex flex-col justify-between hero-animate">
-        <div class="space-y-3">
-          <div class="flex items-center gap-3">
-            <span id="hero-tag" class="px-3 py-1 rounded-md bg-white/15 border border-white/20 text-xs font-semibold tracking-wider uppercase text-white">
-              4K Dolby Vision
-            </span>
-            <span id="hero-subtag" class="text-sm font-medium text-white/60">
-              Continuar a ver
-            </span>
-          </div>
-
-          <h2 id="hero-title" class="text-5xl lg:text-6xl font-bold tracking-tight text-white leading-none pt-1">
-            Netflix
-          </h2>
-
-          <p id="hero-desc" class="text-sm lg:text-base text-white/70 max-w-2xl leading-relaxed pt-1">
-            Retome as suas séries imediatamente em 4K HDR sem faixas patrocinadas no sistema.
-          </p>
-        </div>
-
-        <div class="pt-4">
-          <div class="text-xs font-semibold text-white/45 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
-            <svg class="w-3.5 h-3.5 text-white/60" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-            <span>Continuar a Ver &amp; Sugestões</span>
-          </div>
-          <div id="hero-cards" class="grid grid-cols-3 gap-4"></div>
-        </div>
-      </div>
-
-      <!-- Right 2 Columns: Bento Widgets -->
-      <div class="col-span-2 flex flex-col justify-between gap-4">
-        <div id="bento-weather" onclick="openModal('weather')" class="vision-glass rounded-3xl p-5 cursor-pointer flex-1 flex flex-col justify-between">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-3.5">
-              <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-sky-400/25 to-indigo-500/20 border border-white/15 flex items-center justify-center shrink-0">
-                <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none">
-                  <circle class="sun-spin" cx="9.5" cy="8.5" r="3.5" fill="#FBBF24"/>
-                  <path d="M17.5 18.5H8.5a4 4 0 0 1-.4-7.98A5 5 0 0 1 18 11.5a3.5 3.5 0 0 1-.5 7Z" fill="#F8FAFC"/>
-                </svg>
-              </div>
-              <div class="min-w-0">
-                <div class="flex items-center gap-1.5">
-                  <span id="widget-city" class="text-base font-semibold text-white truncate">Lisboa</span>
-                  <svg class="w-3.5 h-3.5 text-sky-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2a8 8 0 0 0-8 8c0 5.25 8 12 8 12s8-6.75 8-12a8 8 0 0 0-8-8z"/></svg>
-                </div>
-                <div id="widget-cond" class="text-xs text-white/60 truncate mt-0.5">Céu pouco nublado</div>
-              </div>
-            </div>
-            <div class="text-right shrink-0">
-              <div id="widget-temp" class="text-3xl font-light tracking-tight text-white leading-none">19°</div>
-              <div id="widget-hilo" class="text-xs text-white/45 mt-1">22° / 14°</div>
-            </div>
-          </div>
-
-          <div id="mini-forecast" class="grid grid-cols-4 gap-2 pt-4 mt-4 border-t border-white/10 text-center"></div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-4">
-          <button id="bento-shield" onclick="openModal('control')" class="vision-glass h-[84px] rounded-2xl px-4 flex items-center gap-3.5 text-left">
-            <div class="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center shrink-0 text-emerald-300">
-              <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
-            </div>
-            <div class="min-w-0">
-              <div class="text-sm font-semibold text-white truncate">Escudo DNS</div>
-              <div id="widget-apps-count" class="text-xs text-emerald-300/90 truncate mt-0.5">6 apps · Limpo</div>
-            </div>
-          </button>
-
-          <button id="bento-sleep" onclick="cycleSleepTimer()" class="vision-glass h-[84px] rounded-2xl px-4 flex items-center gap-3.5 text-left">
-            <div class="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center shrink-0 text-indigo-300">
-              <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-            </div>
-            <div class="min-w-0">
-              <div class="text-sm font-semibold text-white truncate">Sleep Timer</div>
-              <div id="widget-sleep-text" class="text-xs text-white/60 truncate mt-0.5">Desativado</div>
-            </div>
-          </button>
-        </div>
-      </div>
-    </main>
-
-    <!-- ================= ROW 3: SYMMETRIC 6-COLUMN DOCK & FOOTER ================= -->
-    <footer class="relative z-10 space-y-2.5">
-      <div class="vision-glass rounded-3xl p-4">
-        <div id="dock-grid" class="grid grid-cols-6 gap-4"></div>
-      </div>
-
-      <div class="flex items-center justify-between px-2 text-xs text-white/45">
-        <div id="status-toast" class="flex items-center gap-2 text-white/75 font-medium">
-          <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-          <span>Setas ◀ ▶ ▲ ▼ para navegar · OK para abrir · Botões de cor ou C/W/M para atalhos</span>
-        </div>
-        <div class="flex items-center gap-4">
-          <button onclick="toggleScreensaver()" class="hover:text-white transition">🌙 Standby</button>
-          <span>·</span>
-          <span>São Paulo <strong id="clock-sp" class="text-white/70 font-normal">10:05</strong></span>
-          <span>·</span>
-          <span>Londres <strong id="clock-uk" class="text-white/70 font-normal">14:05</strong></span>
-        </div>
-      </div>
-    </footer>
-
-    <!-- ================= MODAL: WEATHER DETAIL ================= -->
-    <div id="modal-weather" class="hidden absolute inset-0 z-30 bg-black/80 flex items-center justify-center p-8">
-      <div class="vision-glass-dark w-full max-w-2xl rounded-3xl p-7 space-y-6">
-        <div class="flex items-center justify-between border-b border-white/10 pb-4">
-          <div class="flex items-center gap-3">
-            <div class="w-11 h-11 rounded-2xl bg-sky-500/20 border border-sky-400/30 flex items-center justify-center text-sky-300">
-              <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>
-            </div>
-            <div>
-              <h3 class="text-lg font-semibold text-white">Previsão Meteorológica — <span id="modal-weather-city">Lisboa</span></h3>
-              <p class="text-xs text-white/55">Dados meteorológicos em tempo real (Open-Meteo)</p>
-            </div>
-          </div>
-          <div class="flex items-center gap-2">
-            <button onclick="switchCity()" class="vision-glass px-3.5 py-2 rounded-xl text-xs font-medium text-white hover:bg-white/15">Mudar Cidade</button>
-            <button onclick="closeModals()" class="px-3.5 py-2 rounded-xl bg-white/15 hover:bg-white/25 text-xs font-medium text-white">Fechar</button>
-          </div>
-        </div>
-        <div id="modal-forecast-cards" class="grid grid-cols-5 gap-3.5"></div>
+<div class="shell">
+  <!-- TOP NAVIGATION BAR (ROW 0) -->
+  <div class="topbar">
+    <div class="brand-cluster">
+      <div class="brand-logo">CTV</div>
+      <div>
+        <div class="brand-title">CleanTV <span style="font-weight:400;color:#38bdf8;">OS 2.0</span></div>
+        <div class="brand-sub">Will & Creator Studio Hub</div>
       </div>
     </div>
 
-    <!-- ================= MODAL: HDMI INPUTS ================= -->
-    <div id="modal-inputs" class="hidden absolute inset-0 z-30 bg-black/80 flex items-center justify-center p-8">
-      <div class="vision-glass-dark w-full max-w-md rounded-3xl p-7 space-y-4">
-        <div class="flex items-center justify-between border-b border-white/10 pb-3">
-          <div class="flex items-center gap-2.5">
-            <svg class="w-5 h-5 text-sky-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="12" rx="2"/><path d="M6 20h12"/><path d="M12 16v4"/></svg>
-            <h3 class="text-base font-semibold text-white">Selecionar Entrada HDMI / TV</h3>
-          </div>
-          <button onclick="closeModals()" class="px-3 py-1 rounded-xl bg-white/15 hover:bg-white/25 text-xs text-white">Voltar</button>
-        </div>
-        <div id="inputs-list" class="space-y-2.5"></div>
-      </div>
+    <div class="nav-pills" id="row-0">
+      <div class="nav-pill focusable active-tab" data-row="0" data-col="0" data-tab="cinema">🎬 Cinema & Apps</div>
+      <div class="nav-pill focusable" data-row="0" data-col="1" data-tab="studio">✨ Creator Studio</div>
+      <div class="nav-pill focusable" data-row="0" data-col="2" data-tab="smarthome">🏠 Smart Home & Alexa</div>
+      <div class="nav-pill focusable" data-row="0" data-col="3" data-tab="devhud">⚡ Dev & Mac HUD</div>
     </div>
 
-    <!-- ================= MODAL: CONTROL CENTER & APP MANAGER ================= -->
-    <div id="modal-control" class="hidden absolute inset-0 z-30 bg-black/85 flex items-center justify-center p-8">
-      <div class="vision-glass-dark w-full max-w-3xl max-h-full overflow-y-auto rounded-3xl p-7 space-y-5">
-        <div class="flex items-center justify-between border-b border-white/10 pb-4">
-          <div>
-            <h3 class="text-lg font-semibold text-white">Painel de Controlo &amp; Aplicações</h3>
-            <p class="text-xs text-white/55">As suas escolhas ficam guardadas automaticamente na memória da TV</p>
-          </div>
-          <button onclick="closeModals()" class="px-4 py-2 rounded-xl bg-white text-black text-xs font-semibold hover:opacity-90">Guardar &amp; Fechar</button>
-        </div>
-        <div id="app-manager-grid" class="grid grid-cols-3 gap-3"></div>
+    <div class="status-cluster">
+      <div class="status-chip">
+        <span class="dot" id="bridge-dot"></span>
+        <span id="bridge-status">Mac Bridge + ADB Ready</span>
       </div>
+      <div class="clock" id="clock">21:00</div>
     </div>
-
-    <!-- ================= MODAL: OLED STANDBY SCREENSAVER ================= -->
-    <div id="modal-screensaver" onclick="toggleScreensaver()" class="hidden absolute inset-0 z-40 bg-[#020306] flex items-center justify-center cursor-pointer">
-      <div class="pointer-events-none absolute w-[450px] h-[450px] rounded-full blur-3xl opacity-25 ss-drift"
-           style="background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);"></div>
-      <div class="text-center ss-drift space-y-3">
-        <div id="ss-clock" class="text-8xl font-extralight tracking-tighter text-white/95">14:05</div>
-        <div class="flex items-center justify-center gap-3 text-base text-white/55 font-medium">
-          <span id="ss-city-weather">Lisboa · 19°C</span>
-          <span>·</span>
-          <span>OLED Care Ativo</span>
-        </div>
-      </div>
-    </div>
-
   </div>
 
-  <script>
-    const BRIDGE_BASE = (window.location.port === '8765')
-      ? window.location.origin
-      : 'http://192.168.2.23:8765';
+  <!-- =========================================================
+       TAB 1: CINEMA & APPS
+       ========================================================= -->
+  <div class="stage active" id="stage-cinema">
+    <div class="hero-banner" id="cinema-hero">
+      <div class="hero-left">
+        <div class="hero-badge" id="hero-badge">★ Zero-Ad Native Android TV</div>
+        <div class="hero-title" id="hero-title">SmartTube 4K HDR</div>
+        <div class="hero-desc" id="hero-desc">Ad-free YouTube with built-in SponsorBlock & DeArrow. Instant native launch on your debloated Xiaomi Box + automatic Toshiba 4K panel sync.</div>
+      </div>
+      <div class="hero-right">
+        <div class="stat-ring-card">
+          <div class="stat-ring-val" id="stat-ram">-- MB</div>
+          <div class="stat-ring-lbl">Free Box RAM</div>
+        </div>
+        <div class="stat-ring-card">
+          <div class="stat-ring-val" id="stat-storage">2.9 GB</div>
+          <div class="stat-ring-lbl">Free Storage</div>
+        </div>
+        <div class="stat-ring-card">
+          <div class="stat-ring-val" style="color:#10b981;">0 Ads</div>
+          <div class="stat-ring-lbl">SponsorBlock</div>
+        </div>
+      </div>
+    </div>
 
-    let bridgeConnected = false;
-    let tvVolume = 9;
-    let autoLaunchEnabled = true;
-
-    async function callBridge(pathAndQuery) {
-      const url = `${BRIDGE_BASE}${pathAndQuery}${pathAndQuery.includes('?') ? '&' : '?'}_t=${Date.now()}`;
-      try {
-        const res = await fetch(url, { mode: 'cors' });
-        if (res.ok) {
-          bridgeConnected = true;
-          return await res.json();
-        }
-      } catch (_) {
-        // Fallback for HTTPS -> HTTP Mixed Content in TV Browser: fire GET via Image beacon
-        try {
-          const img = new Image();
-          img.src = url;
-          bridgeConnected = true;
-        } catch (__) {}
-      }
-      return null;
-    }
-
-    const BRAND_SVGS = {
-      netflix: `<svg class="w-7 h-7" viewBox="0 0 24 24" fill="none"><path d="M5.5 3h3.6v18H5.5V3zm9.4 0h3.6v18h-3.6V3z" fill="#B20710"/><path d="M5.5 3h3.6l9.4 18h-3.6L5.5 3z" fill="#E50914"/></svg>`,
-      youtube: `<svg class="w-7 h-7" viewBox="0 0 24 24" fill="none"><rect x="2" y="4.5" width="20" height="15" rx="4.5" fill="#FF0033"/><polygon points="10 8.5 16 12 10 15.5" fill="#FFFFFF"/></svg>`,
-      prime: `<svg class="w-7 h-7" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9.5" fill="#00A8E1" fill-opacity="0.2" stroke="#00A8E1" stroke-width="1.6"/><path d="M6.5 13.5c3.2 2.6 7.8 2.6 11 0" stroke="#38BDF8" stroke-width="2.2" stroke-linecap="round"/><path d="M15.8 12.2l2.3.9-.8 2.3" stroke="#38BDF8" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="9" r="2" fill="#FFFFFF"/></svg>`,
-      disney: `<svg class="w-7 h-7" viewBox="0 0 24 24" fill="none"><path d="M4.5 16.5C6.5 9 15.5 7.5 19.5 15" stroke="#60A5FA" stroke-width="2.1" stroke-linecap="round"/><path d="M17.5 5.5v4.5M15.25 7.75h4.5" stroke="#FACC15" stroke-width="2" stroke-linecap="round"/><circle cx="11" cy="15.5" r="2" fill="#FFFFFF"/></svg>`,
-      apple: `<svg class="w-7 h-7" viewBox="0 0 24 24" fill="none"><rect x="2.5" y="4.5" width="19" height="15" rx="4.5" fill="#F8FAFC" fill-opacity="0.16" stroke="#F8FAFC" stroke-width="1.6"/><circle cx="10" cy="12.5" r="3" fill="#FFFFFF"/><path d="M10.5 7.2c.8-1 2-1.2 2.5-1.2-.1 1-.7 1.8-1.5 2.1" stroke="#FFFFFF" stroke-width="1.5" stroke-linecap="round"/><polygon points="15 10.2 18.2 12.2 15 14.2" fill="#FFFFFF"/></svg>`,
-      hbomax: `<svg class="w-7 h-7" viewBox="0 0 24 24" fill="none"><rect x="2.5" y="4.5" width="19" height="15" rx="4.5" fill="#7C3AED" fill-opacity="0.25" stroke="#A78BFA" stroke-width="1.6"/><circle cx="12" cy="12" r="4.2" stroke="#FFFFFF" stroke-width="2"/><circle cx="12" cy="12" r="1.5" fill="#C4B5FD"/></svg>`,
-      plex: `<svg class="w-7 h-7" viewBox="0 0 24 24" fill="none"><rect x="2.5" y="3.5" width="19" height="17" rx="4.5" fill="#F59E0B" fill-opacity="0.2" stroke="#FBBF24" stroke-width="1.6"/><path d="M9.5 7.5h3l3.5 4.5-3.5 4.5h-3L13 12 9.5 7.5z" fill="#FBBF24"/></svg>`,
-      spotify: `<svg class="w-7 h-7" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9.5" fill="#10B981" fill-opacity="0.2" stroke="#34D399" stroke-width="1.6"/><path d="M7.5 10c3.2-1 6.5-.7 9.2.8M8.2 13c2.5-.7 5.2-.5 7.3.6M9 15.8c1.9-.5 3.9-.3 5.5.5" stroke="#34D399" stroke-width="1.9" stroke-linecap="round"/></svg>`,
-      rtp: `<svg class="w-7 h-7" viewBox="0 0 24 24" fill="none"><rect x="2.5" y="5.5" width="19" height="13" rx="3.5" fill="#0284C7"/><circle cx="8.2" cy="12" r="2.6" fill="#FFFFFF"/><path d="M13.2 9.5h4.5M13.2 12h3.2M13.2 14.5h4.5" stroke="#FFFFFF" stroke-width="1.9" stroke-linecap="round"/></svg>`,
-      stremio: `<svg class="w-7 h-7" viewBox="0 0 24 24" fill="none"><polygon points="12 2.5 21.5 12 12 21.5 2.5 12" fill="url(#stremGrad)"/><polygon points="10.5 8.5 15.8 12 10.5 15.5" fill="#FFFFFF"/><defs><linearGradient id="stremGrad" x1="2.5" y1="2.5" x2="21.5" y2="21.5" gradientUnits="userSpaceOnUse"><stop stop-color="#A855F7"/><stop offset="1" stop-color="#3B82F6"/></linearGradient></defs></svg>`,
-      bloat: `<svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="m9 9 6 6m0-6-6 6"/></svg>`
-    };
-
-    const ALL_APPS = [
-      {
-        id: 'netflix', nativeApp: 'Netflix', name: 'Netflix', subtitle: 'App Nativa · 4K Dolby', url: 'https://www.netflix.com', color: '#E50914',
-        tileBg: 'linear-gradient(145deg, rgba(185, 10, 20, 0.88) 0%, rgba(22, 6, 10, 0.96) 100%)',
-        heroBg: 'radial-gradient(110% 90% at 70% 20%, rgba(229, 9, 20, 0.36) 0%, rgba(15, 23, 42, 0.15) 55%, rgba(4, 5, 9, 0.98) 100%)',
-        svg: BRAND_SVGS.netflix, desc: 'Abre diretamente a aplicação nativa 4K HDR da sua Toshiba TV via Mac Mini Bridge.',
-        tag: '4K Nativo · Bridge', subtag: 'Continuar a ver', enabled: true,
-        cards: [
-          { title: 'Black Mirror · T7', sub: 'Ep. 2 · Restam 24 min', progress: 65, accent: '#E50914' },
-          { title: 'Senna', sub: 'Minissérie · 4K Atmos', progress: 35, accent: '#EF4444' },
-          { title: '3 Body Problem', sub: 'Sci-Fi · Top 10 Portugal', progress: 88, accent: '#DC2626' }
-        ]
-      },
-      {
-        id: 'youtube', nativeApp: 'YouTube', name: 'YouTube', subtitle: 'App Nativa · 4K 60fps', url: 'https://www.youtube.com/tv', color: '#FF0033',
-        tileBg: 'linear-gradient(145deg, rgba(205, 0, 40, 0.88) 0%, rgba(24, 6, 12, 0.96) 100%)',
-        heroBg: 'radial-gradient(110% 90% at 70% 20%, rgba(255, 0, 51, 0.32) 0%, rgba(15, 23, 42, 0.15) 55%, rgba(4, 5, 9, 0.98) 100%)',
-        svg: BRAND_SVGS.youtube, desc: 'Abre a app nativa YouTube 4K 60fps HDR instalada na sua Toshiba TV.',
-        tag: '60fps HDR Nativo', subtag: 'Subscrições & Diretos', enabled: true,
-        cards: [
-          { title: 'Costa de Portugal 4K', sub: 'Drone 60fps HDR', progress: 45, accent: '#FF0033' },
-          { title: 'Resumo Liga Portugal', sub: 'Desporto · Hoje', progress: 20, accent: '#F43F5E' },
-          { title: 'Lofi Hip Hop Radio', sub: 'Em Direto · 24/7', progress: 100, accent: '#FB7185' }
-        ]
-      },
-      {
-        id: 'prime', nativeApp: 'Prime Video', name: 'Prime Video', subtitle: 'App Nativa · HDR10+', url: 'https://www.primevideo.com', color: '#00A8E1',
-        tileBg: 'linear-gradient(145deg, rgba(2, 132, 199, 0.88) 0%, rgba(6, 18, 32, 0.96) 100%)',
-        heroBg: 'radial-gradient(110% 90% at 70% 20%, rgba(0, 168, 225, 0.34) 0%, rgba(15, 23, 42, 0.15) 55%, rgba(4, 5, 9, 0.98) 100%)',
-        svg: BRAND_SVGS.prime, desc: 'Abre a app nativa Amazon Prime Video em 4K HDR10+ via Mac Mini Bridge.',
-        tag: 'HDR10+ Nativo', subtag: 'Incluído no Prime', enabled: true,
-        cards: [
-          { title: 'Fallout', sub: 'T1 Ep. 5 · 4K HDR10+', progress: 55, accent: '#00A8E1' },
-          { title: 'The Boys', sub: 'Temporada 4 · UHD', progress: 80, accent: '#38BDF8' },
-          { title: 'Road House', sub: 'Filme · Ação', progress: 25, accent: '#0284C7' }
-        ]
-      },
-      {
-        id: 'disney', nativeApp: 'Disney+', name: 'Disney+', subtitle: 'App Nativa · IMAX', url: 'https://www.disneyplus.com', color: '#38BDF8',
-        tileBg: 'linear-gradient(145deg, rgba(29, 78, 216, 0.88) 0%, rgba(7, 12, 30, 0.96) 100%)',
-        heroBg: 'radial-gradient(110% 90% at 70% 20%, rgba(56, 189, 248, 0.32) 0%, rgba(15, 23, 42, 0.15) 55%, rgba(4, 5, 9, 0.98) 100%)',
-        svg: BRAND_SVGS.disney, desc: 'Abre a app nativa Disney+ (App ID 295) diretamente na sua Toshiba TV.',
-        tag: 'IMAX Enhanced', subtag: 'Coleções em 4K', enabled: true,
-        cards: [
-          { title: 'Shōgun', sub: 'FX · 18 Emmys', progress: 95, accent: '#38BDF8' },
-          { title: 'The Bear', sub: 'T3 Ep. 4 · Drama', progress: 40, accent: '#60A5FA' },
-          { title: 'Andor', sub: 'Star Wars · 4K Dolby', progress: 70, accent: '#2563EB' }
-        ]
-      },
-      {
-        id: 'apple', nativeApp: 'Apple TV', name: 'Apple TV+', subtitle: 'App Nativa · 4K Dolby', url: 'https://tv.apple.com', color: '#94A3B8',
-        tileBg: 'linear-gradient(145deg, rgba(71, 85, 105, 0.88) 0%, rgba(15, 23, 42, 0.96) 100%)',
-        heroBg: 'radial-gradient(110% 90% at 70% 20%, rgba(148, 163, 184, 0.30) 0%, rgba(15, 23, 42, 0.18) 55%, rgba(4, 5, 9, 0.98) 100%)',
-        svg: BRAND_SVGS.apple, desc: 'Abre a app nativa Apple TV+ (App ID 351) instalada na sua Toshiba TV.',
-        tag: 'Apple Originals 4K', subtag: 'App Nativa TV', enabled: true,
-        cards: [
-          { title: 'Severance · T2', sub: 'Sci-Fi · Dolby Vision', progress: 70, accent: '#E2E8F0' },
-          { title: 'Silo', sub: 'Temporada 2 · 4K', progress: 50, accent: '#94A3B8' },
-          { title: 'Slow Horses', sub: 'Thriller · 4K HDR', progress: 85, accent: '#CBD5E1' }
-        ]
-      },
-      {
-        id: 'hbomax', nativeApp: 'HBO Max', name: 'HBO Max', subtitle: 'App Nativa · 4K UHD', url: 'https://www.max.com', color: '#8B5CF6',
-        tileBg: 'linear-gradient(145deg, rgba(109, 40, 217, 0.88) 0%, rgba(16, 8, 32, 0.96) 100%)',
-        heroBg: 'radial-gradient(110% 90% at 70% 20%, rgba(139, 92, 246, 0.34) 0%, rgba(15, 23, 42, 0.15) 55%, rgba(4, 5, 9, 0.98) 100%)',
-        svg: BRAND_SVGS.hbomax, desc: 'Abre a app nativa HBO Max (App ID 2378) diretamente na sua Toshiba TV.',
-        tag: 'HBO Originals 4K', subtag: 'App Nativa TV', enabled: true,
-        cards: [
-          { title: 'The Last of Us · T2', sub: 'HBO Original · 4K', progress: 60, accent: '#A78BFA' },
-          { title: 'The White Lotus', sub: 'Temporada 3 · HD', progress: 45, accent: '#8B5CF6' },
-          { title: 'Dune: Prophecy', sub: 'Sci-Fi · 4K Atmos', progress: 80, accent: '#C4B5FD' }
-        ]
-      },
-      {
-        id: 'plex', nativeApp: 'Plex', name: 'Plex', subtitle: 'App Nativa · Media', url: 'https://app.plex.tv/tv-vidaa', color: '#F59E0B',
-        tileBg: 'linear-gradient(145deg, rgba(180, 83, 9, 0.88) 0%, rgba(24, 14, 6, 0.96) 100%)',
-        heroBg: 'radial-gradient(110% 90% at 70% 20%, rgba(245, 158, 11, 0.32) 0%, rgba(15, 23, 42, 0.15) 55%, rgba(4, 5, 9, 0.98) 100%)',
-        svg: BRAND_SVGS.plex, desc: 'Abre a app nativa Plex (App ID 42) para streaming local a partir do seu Mac Mini.',
-        tag: 'Direct Play 4K', subtag: 'Servidor Local', enabled: false,
-        cards: [
-          { title: 'Biblioteca Cinema 4K', sub: 'Mac Mini Local Server', progress: 75, accent: '#FBBF24' },
-          { title: 'Séries em Casa', sub: 'Direct Stream', progress: 40, accent: '#F59E0B' },
-          { title: 'Coleção IMAX', sub: 'TrueHD Audio', progress: 90, accent: '#D97706' }
-        ]
-      },
-      {
-        id: 'spotify', nativeApp: 'Spotify : Music & Podcasts', name: 'Spotify', subtitle: 'App Nativa · Música', url: 'https://open.spotify.com', color: '#10B981',
-        tileBg: 'linear-gradient(145deg, rgba(5, 150, 105, 0.88) 0%, rgba(6, 22, 16, 0.96) 100%)',
-        heroBg: 'radial-gradient(110% 90% at 70% 20%, rgba(16, 185, 129, 0.32) 0%, rgba(15, 23, 42, 0.15) 55%, rgba(4, 5, 9, 0.98) 100%)',
-        svg: BRAND_SVGS.spotify, desc: 'Abre a app nativa Spotify TV (App ID 2256) com Spotify Connect.',
-        tag: 'Spotify Connect', subtag: 'Música & Podcasts', enabled: false,
-        cards: [
-          { title: 'Late Night Jazz', sub: 'Playlist · Hi-Fi', progress: 65, accent: '#34D399' },
-          { title: 'Daily Mix 1', sub: 'Para si', progress: 50, accent: '#10B981' },
-          { title: 'Ambient Focus', sub: 'Instrumental', progress: 85, accent: '#059669' }
-        ]
-      },
-      {
-        id: 'globoplay', nativeApp: 'GloboPlay', name: 'Globoplay', subtitle: 'App Nativa · Brasil', url: 'https://globoplay.globo.com', color: '#F97316',
-        tileBg: 'linear-gradient(145deg, rgba(194, 65, 12, 0.88) 0%, rgba(28, 10, 6, 0.96) 100%)',
-        heroBg: 'radial-gradient(110% 90% at 70% 20%, rgba(249, 115, 22, 0.32) 0%, rgba(15, 23, 42, 0.15) 55%, rgba(4, 5, 9, 0.98) 100%)',
-        svg: BRAND_SVGS.rtp, desc: 'Abre a app nativa Globoplay (App ID 338) instalada na sua Toshiba TV.',
-        tag: 'Canais & Novelas', subtag: 'App Nativa TV', enabled: false,
-        cards: [
-          { title: 'TV Globo Ao Vivo', sub: 'Sinal Internacional HD', progress: 100, accent: '#F97316' },
-          { title: 'Séries Originais', sub: '4K HDR', progress: 50, accent: '#FB923C' },
-          { title: 'Cinema Brasileiro', sub: 'Catálogo Completo', progress: 30, accent: '#EA580C' }
-        ]
-      },
-      {
-        id: 'rtp', nativeApp: null, name: 'RTP Play', subtitle: 'Em Direto · HD', url: 'https://www.rtp.pt/play/', color: '#0284C7',
-        tileBg: 'linear-gradient(145deg, rgba(3, 105, 161, 0.88) 0%, rgba(6, 15, 28, 0.96) 100%)',
-        heroBg: 'radial-gradient(110% 90% at 70% 20%, rgba(2, 132, 199, 0.34) 0%, rgba(15, 23, 42, 0.15) 55%, rgba(4, 5, 9, 0.98) 100%)',
-        svg: BRAND_SVGS.rtp, desc: 'Canais portugueses em direto (RTP1, RTP2, RTP3) e séries nacionais on-demand.',
-        tag: 'TV em Direto', subtag: 'Emissão Nacional', enabled: false,
-        cards: [
-          { title: 'RTP 1 · Em Direto', sub: 'Emissão contínua HD', progress: 100, accent: '#0284C7' },
-          { title: 'RTP 3 · Notícias', sub: 'Informação 24h', progress: 100, accent: '#38BDF8' },
-          { title: 'Séries RTP', sub: 'Catálogo On-Demand', progress: 50, accent: '#0369A1' }
-        ]
-      },
-      {
-        id: 'stremio', nativeApp: null, name: 'Stremio Web', subtitle: 'Cinema & Media', url: 'https://web.stremio.com', color: '#A855F7',
-        tileBg: 'linear-gradient(145deg, rgba(109, 40, 217, 0.88) 0%, rgba(16, 8, 32, 0.96) 100%)',
-        heroBg: 'radial-gradient(110% 90% at 70% 20%, rgba(168, 85, 247, 0.34) 0%, rgba(15, 23, 42, 0.15) 55%, rgba(4, 5, 9, 0.98) 100%)',
-        svg: BRAND_SVGS.stremio, desc: 'A sua biblioteca pessoal de cinema, calendário de episódios e servidor doméstico.',
-        tag: 'TrueHD · 4K', subtag: 'Media Center', enabled: false,
-        cards: [
-          { title: 'Dune: Part Two', sub: '4K HDR · 2h 46m', progress: 75, accent: '#A855F7' },
-          { title: 'Severance · T2', sub: 'Novo Episódio', progress: 35, accent: '#C084FC' },
-          { title: 'Oppenheimer', sub: 'IMAX 4K · Biblioteca', progress: 100, accent: '#9333EA' }
-        ]
-      }
-    ];
-
-    const CITIES = [
-      { name: 'Lisboa', lat: 38.7223, lon: -9.1393, temp: '19°', cond: 'Céu pouco nublado', hiLo: '22° / 14°', days: [
-        { d: 'Seg', hi: '23°', lo: '14°', type: 'sun' },
-        { d: 'Ter', hi: '24°', lo: '15°', type: 'sun' },
-        { d: 'Qua', hi: '20°', lo: '13°', type: 'cloud' },
-        { d: 'Qui', hi: '18°', lo: '12°', type: 'rain' },
-        { d: 'Sex', hi: '21°', lo: '14°', type: 'sun' }
-      ]},
-      { name: 'Porto', lat: 41.1579, lon: -8.6291, temp: '17°', cond: 'Brisa Atlântica', hiLo: '19° / 12°', days: [
-        { d: 'Seg', hi: '20°', lo: '12°', type: 'cloud' },
-        { d: 'Ter', hi: '21°', lo: '13°', type: 'sun' },
-        { d: 'Qua', hi: '17°', lo: '11°', type: 'rain' },
-        { d: 'Qui', hi: '18°', lo: '11°', type: 'cloud' },
-        { d: 'Sex', hi: '20°', lo: '12°', type: 'sun' }
-      ]},
-      { name: 'São Paulo', lat: -23.5505, lon: -46.6333, temp: '26°', cond: 'Sol entre nuvens', hiLo: '28° / 18°', days: [
-        { d: 'Seg', hi: '28°', lo: '19°', type: 'sun' },
-        { d: 'Ter', hi: '25°', lo: '18°', type: 'rain' },
-        { d: 'Qua', hi: '26°', lo: '17°', type: 'cloud' },
-        { d: 'Qui', hi: '29°', lo: '19°', type: 'sun' },
-        { d: 'Sex', hi: '30°', lo: '20°', type: 'sun' }
-      ]}
-    ];
-
-    const THEMES = [
-      { name: 'Cinema Glow', mode: 'orbs' },
-      { name: 'Chuva Suave', mode: 'rain' },
-      { name: 'OLED Pitch Black', mode: 'off' }
-    ];
-
-    let focusedIdx = 0;
-    let cityIdx = Number(localStorage.getItem('cleantv_city') || 0);
-    let themeIdx = Number(localStorage.getItem('cleantv_theme') || 0);
-    let userIdx = Number(localStorage.getItem('cleantv_user') || 0);
-    let radioOn = false;
-    let audioCtx = null;
-    let audioNodes = [];
-    let sleepMin = 0;
-    const USERS = ['William', 'Bianca', 'Cinema', 'Família'];
-
-    try {
-      const savedApps = JSON.parse(localStorage.getItem('cleantv_apps_v2') || 'null');
-      if (savedApps) {
-        ALL_APPS.forEach(a => {
-          if (typeof savedApps[a.id] === 'boolean') a.enabled = savedApps[a.id];
-        });
-      }
-    } catch (_) {}
-
-    function saveState() {
-      try {
-        const map = {};
-        ALL_APPS.forEach(a => map[a.id] = a.enabled);
-        localStorage.setItem('cleantv_apps_v2', JSON.stringify(map));
-        localStorage.setItem('cleantv_city', String(cityIdx));
-        localStorage.setItem('cleantv_theme', String(themeIdx));
-        localStorage.setItem('cleantv_user', String(userIdx));
-      } catch (_) {}
-    }
-
-    function weatherTypeSvg(type) {
-      if (type === 'sun') {
-        return `<svg class="w-5 h-5 mx-auto" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="5" fill="#FBBF24"/><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32 1.41-1.41" stroke="#FBBF24" stroke-width="2" stroke-linecap="round"/></svg>`;
-      }
-      if (type === 'rain') {
-        return `<svg class="w-5 h-5 mx-auto" viewBox="0 0 24 24" fill="none"><path d="M17.5 15H8.5a4 4 0 0 1-.4-7.98A5 5 0 0 1 18 8a3.5 3.5 0 0 1-.5 7Z" fill="#94A3B8"/><path d="M9 17v3m4-3v3m4-3v3" stroke="#38BDF8" stroke-width="2" stroke-linecap="round"/></svg>`;
-      }
-      return `<svg class="w-5 h-5 mx-auto" viewBox="0 0 24 24" fill="none"><circle cx="9" cy="9" r="3.5" fill="#FBBF24"/><path d="M17.5 18H8.5a4 4 0 0 1-.4-7.98A5 5 0 0 1 18 11a3.5 3.5 0 0 1-.5 7Z" fill="#E2E8F0"/></svg>`;
-    }
-
-    function getEnabledApps() {
-      return ALL_APPS.filter(a => a.enabled).slice(0, 6);
-    }
-
-    function renderDock() {
-      const apps = getEnabledApps();
-      if (focusedIdx >= apps.length) focusedIdx = Math.max(0, apps.length - 1);
-
-      const grid = document.getElementById('dock-grid');
-      grid.innerHTML = '';
-
-      apps.forEach((app, idx) => {
-        const isFocused = idx === focusedIdx;
-        const btn = document.createElement('button');
-        btn.className = `app-tile gpu-layer relative h-[100px] rounded-2xl px-4 py-3.5 flex flex-col justify-between text-left border overflow-hidden ${
-          isFocused ? 'tv-focused border-white/85' : 'border-white/10 opacity-80 hover:opacity-100'
-        }`;
-        btn.style.background = app.tileBg;
-
-        btn.onmouseenter = () => {
-          if (focusedIdx !== idx) {
-            focusedIdx = idx;
-            renderDock();
-          }
-        };
-        btn.onclick = () => {
-          focusedIdx = idx;
-          renderDock();
-          triggerSelectedApp();
-        };
-
-        btn.innerHTML = `
-          <div class="tile-shine pointer-events-none absolute inset-0"></div>
-          <div class="relative z-10 flex items-center justify-between w-full">
-            ${app.svg}
-            ${isFocused ? `<span class="w-2.5 h-2.5 rounded-full bg-white shadow-[0_0_8px_#fff]"></span>` : ''}
-          </div>
-          <div class="relative z-10 leading-tight">
-            <div class="text-sm lg:text-base font-semibold text-white tracking-tight truncate">${app.name}</div>
-            <div class="text-xs text-white/60 truncate mt-0.5">${app.subtitle}</div>
-          </div>
-        `;
-        grid.appendChild(btn);
-      });
-
-      updateHero();
-      document.getElementById('widget-apps-count').textContent = bridgeConnected
-        ? `Mac Bridge · Ativo`
-        : `${apps.length} apps · Ativo`;
-    }
-
-    function updateHero() {
-      const apps = getEnabledApps();
-      const app = apps[focusedIdx] || ALL_APPS[0];
-
-      const screen = document.getElementById('tv-screen');
-      screen.style.setProperty('--accent-glow', app.color);
-      document.getElementById('ambient-orb').style.background = `radial-gradient(circle, ${app.color} 0%, transparent 70%)`;
-      document.getElementById('hero-backdrop').style.background = app.heroBg;
-
-      const hero = document.getElementById('hero-container');
-      hero.classList.remove('hero-animate');
-      void hero.offsetWidth;
-      hero.classList.add('hero-animate');
-
-      document.getElementById('hero-title').textContent = app.name;
-      document.getElementById('hero-desc').textContent = app.desc;
-      document.getElementById('hero-tag').textContent = app.tag;
-      document.getElementById('hero-subtag').textContent = app.subtag;
-
-      const cardsEl = document.getElementById('hero-cards');
-      cardsEl.innerHTML = '';
-      (app.cards || []).forEach(c => {
-        const card = document.createElement('button');
-        card.className = 'vision-glass h-[84px] rounded-2xl px-4 py-3 text-left hover:bg-white/15 transition group flex flex-col justify-between';
-        card.onclick = () => triggerSelectedApp();
-        card.innerHTML = `
-          <div class="min-w-0">
-            <div class="text-sm font-semibold text-white truncate group-hover:text-sky-200 transition">${c.title}</div>
-            <div class="text-xs text-white/55 truncate mt-0.5">${c.sub}</div>
-          </div>
-          <div class="w-full h-1.5 bg-white/15 rounded-full overflow-hidden">
-            <div class="h-full rounded-full" style="width:${c.progress}%; background:${c.accent}"></div>
-          </div>
-        `;
-        cardsEl.appendChild(card);
-      });
-    }
-
-    async function fetchLiveWeather() {
-      const c = CITIES[cityIdx];
-      try {
-        const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${c.lat}&longitude=${c.lon}&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min&timezone=auto`);
-        if (!res.ok) return;
-        const data = await res.json();
-        if (data && data.current) {
-          c.temp = `${Math.round(data.current.temperature_2m)}°`;
-          if (data.daily && data.daily.temperature_2m_max) {
-            c.hiLo = `${Math.round(data.daily.temperature_2m_max[0])}° / ${Math.round(data.daily.temperature_2m_min[0])}°`;
-          }
-          renderWeather();
-        }
-      } catch (_) {}
-    }
-
-    function renderWeather() {
-      const c = CITIES[cityIdx];
-      document.getElementById('weather-temp').textContent = c.temp;
-      document.getElementById('weather-city').textContent = c.name;
-      document.getElementById('widget-city').textContent = c.name;
-      document.getElementById('widget-cond').textContent = c.cond;
-      document.getElementById('widget-temp').textContent = c.temp;
-      document.getElementById('widget-hilo').textContent = c.hiLo;
-      document.getElementById('modal-weather-city').textContent = c.name;
-      document.getElementById('ss-city-weather').textContent = `${c.name} · ${c.temp}C`;
-
-      const strip = document.getElementById('mini-forecast');
-      strip.innerHTML = '';
-      c.days.slice(0, 4).forEach(d => {
-        const div = document.createElement('div');
-        div.className = 'space-y-1.5';
-        div.innerHTML = `
-          <div class="text-xs text-white/50">${d.d}</div>
-          ${weatherTypeSvg(d.type)}
-          <div class="text-xs font-semibold text-white">${d.hi}</div>
-        `;
-        strip.appendChild(div);
-      });
-
-      const modalCards = document.getElementById('modal-forecast-cards');
-      if (modalCards) {
-        modalCards.innerHTML = '';
-        c.days.forEach(d => {
-          const card = document.createElement('div');
-          card.className = 'vision-glass rounded-2xl p-4 text-center space-y-2';
-          card.innerHTML = `
-            <div class="text-xs font-semibold text-white/75">${d.d}</div>
-            <div class="py-1">${weatherTypeSvg(d.type)}</div>
-            <div class="text-sm font-semibold text-white">${d.hi} <span class="text-white/45 font-normal">${d.lo}</span></div>
-          `;
-          modalCards.appendChild(card);
-        });
-      }
-    }
-
-    function switchCity() {
-      cityIdx = (cityIdx + 1) % CITIES.length;
-      saveState();
-      renderWeather();
-      fetchLiveWeather();
-    }
-
-    function cycleTheme() {
-      themeIdx = (themeIdx + 1) % THEMES.length;
-      saveState();
-      applyTheme();
-    }
-
-    function applyTheme() {
-      const t = THEMES[themeIdx];
-      document.getElementById('theme-toolbar-label').textContent = t.name;
-      document.getElementById('ambient-orb').style.opacity = t.mode === 'off' ? '0' : '0.35';
-      initParticles();
-    }
-
-    function toggleRadio() {
-      radioOn = !radioOn;
-      document.getElementById('radio-static-icon').classList.toggle('hidden', radioOn);
-      document.getElementById('radio-anim-icon').classList.toggle('hidden', !radioOn);
-      document.getElementById('radio-label').textContent = radioOn ? 'Lo-Fi ON' : 'Ambiente';
-
-      try {
-        if (radioOn) {
-          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-          const freqs = [220, 277.18, 329.63, 415.3];
-          audioNodes = freqs.map(f => {
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = 'sine';
-            osc.frequency.value = f;
-            gain.gain.value = 0.018;
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start();
-            return osc;
-          });
-        } else if (audioCtx) {
-          audioNodes.forEach(n => n.stop());
-          audioCtx.close();
-          audioCtx = null;
-        }
-      } catch (_) {}
-    }
-
-    async function cycleSleepTimer() {
-      const steps = [0, 30, 60, 90];
-      sleepMin = steps[(steps.indexOf(sleepMin) + 1) % steps.length];
-      const pill = document.getElementById('sleep-pill');
-      const txt = document.getElementById('widget-sleep-text');
-      if (sleepMin > 0) {
-        pill.classList.remove('hidden');
-        pill.classList.add('flex');
-        document.getElementById('sleep-pill-text').textContent = `${sleepMin}m`;
-        txt.textContent = `TV desliga em ${sleepMin}m`;
-        txt.className = 'text-xs text-indigo-300 truncate mt-0.5';
-      } else {
-        pill.classList.add('hidden');
-        pill.classList.remove('flex');
-        txt.textContent = 'Desativado';
-        txt.className = 'text-xs text-white/60 truncate mt-0.5';
-      }
-      await callBridge(`/sleep?minutes=${sleepMin}`);
-    }
-
-    function changeGreeting() {
-      userIdx = (userIdx + 1) % USERS.length;
-      saveState();
-      const name = USERS[userIdx];
-      document.getElementById('greeting-text').textContent = name;
-      document.getElementById('avatar-initial').textContent = name[0];
-    }
-
-    function moveFocus(delta) {
-      const apps = getEnabledApps();
-      if (!apps.length) return;
-      focusedIdx = (focusedIdx + delta + apps.length) % apps.length;
-      renderDock();
-    }
-
-    async function triggerSelectedApp() {
-      const app = getEnabledApps()[focusedIdx];
-      if (!app) return;
-      document.getElementById('status-toast').innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span><span>A abrir <strong>${app.name}</strong> na Toshiba TV via Mac Mini Bridge...</span>`;
-
-      if (app.nativeApp) {
-        const res = await callBridge(`/launch?app=${encodeURIComponent(app.nativeApp)}`);
-        if (res && res.ok) return;
-      }
-      if (app.url) {
-        setTimeout(() => { window.location.href = app.url; }, 350);
-      }
-    }
-
-    function renderInputsModal() {
-      const INPUTS = [
-        { id: 'HDMI1', name: 'HDMI 1', sub: 'Mudar entrada física para HDMI 1', active: true },
-        { id: 'HDMI2', name: 'HDMI 2 (eARC)', sub: 'Mudar entrada física para HDMI 2', active: true },
-        { id: 'HDMI3', name: 'HDMI 3', sub: 'Mudar entrada física para HDMI 3', active: true },
-        { id: 'TV', name: 'TV Digital (Canais)', sub: 'Sintonizador de Canais da TV', active: true }
-      ];
-      const list = document.getElementById('inputs-list');
-      list.innerHTML = '';
-      INPUTS.forEach(inp => {
-        const btn = document.createElement('button');
-        btn.className = 'vision-glass w-full rounded-2xl p-4 flex items-center justify-between hover:bg-white/15 transition text-left';
-        btn.onclick = async () => {
-          document.getElementById('active-input-label').textContent = inp.name;
-          document.getElementById('status-toast').innerHTML = `<span class="w-2 h-2 rounded-full bg-sky-400 animate-ping"></span><span>A mudar a TV para <strong>${inp.name}</strong>...</span>`;
-          closeModals();
-          await callBridge(`/source?id=${encodeURIComponent(inp.id)}`);
-        };
-        btn.innerHTML = `
-          <div class="flex items-center gap-3">
-            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]"></span>
-            <div>
-              <div class="text-sm font-semibold text-white">${inp.name}</div>
-              <div class="text-xs text-white/55">${inp.sub}</div>
-            </div>
-          </div>
-          <span class="text-xs text-sky-300 font-medium">Mudar ➔</span>
-        `;
-        list.appendChild(btn);
-      });
-    }
-
-    async function adjustTvVolume(delta) {
-      tvVolume = Math.max(0, Math.min(100, tvVolume + delta));
-      const el = document.getElementById('ctrl-vol-val');
-      if (el) el.textContent = `${tvVolume}%`;
-      await callBridge(`/volume?val=${tvVolume}`);
-    }
-
-    async function sendTvKey(key) {
-      await callBridge(`/key?key=${encodeURIComponent(key)}`);
-    }
-
-    function renderControlModal() {
-      const grid = document.getElementById('app-manager-grid');
-      grid.innerHTML = '';
-
-      // Top hardware control strip inside modal
-      const hwBar = document.createElement('div');
-      hwBar.className = 'col-span-3 vision-glass rounded-2xl p-4 flex items-center justify-between gap-4 mb-1';
-      hwBar.innerHTML = `
-        <div class="flex items-center gap-3">
-          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]"></span>
+    <div>
+      <div class="section-label">
+        <span>Native Streaming Deck (Instant 0ms Launch)</span>
+        <span style="color:#38bdf8;">Press OK to Launch</span>
+      </div>
+      <div class="cards-row">
+        <div class="app-card focusable" data-row="1" data-col="0"
+             data-title="SmartTube 4K (Ad-Free YouTube)"
+             data-desc="100% ad-free YouTube client with automatic SponsorBlock skip for sponsor reads, intros & outros in 4K 60fps HDR."
+             data-badge="★ Recommended • 0% Ads"
+             data-orb1="rgba(244,63,94,0.28)" data-orb2="rgba(251,146,60,0.22)"
+             style="--card-grad: linear-gradient(135deg, rgba(244,63,94,0.32), rgba(15,23,42,0.4));"
+             onclick="launchNativeApp('com.teamsmarttube.videodaily', 'SmartTube 4K')">
+          <div class="app-icon" style="background:#e11d48;color:#fff;">▶</div>
           <div>
-            <div class="text-sm font-semibold text-white">Mac Mini Bridge · Toshiba TV (192.168.2.9)</div>
-            <div class="text-xs text-white/55">Controlo nativo 4K MQTT + UPnP ativo · Auto-Boot CleanTV ligado</div>
+            <div class="app-name">SmartTube</div>
+            <div class="app-tag">Ad-Free YouTube 4K</div>
           </div>
         </div>
-        <div class="flex items-center gap-2">
-          <button onclick="adjustTvVolume(-2)" class="vision-glass px-3 py-1.5 rounded-xl text-xs font-semibold text-white hover:bg-white/15">Vol -</button>
-          <span id="ctrl-vol-val" class="text-xs font-semibold text-sky-300 w-10 text-center">${tvVolume}%</span>
-          <button onclick="adjustTvVolume(2)" class="vision-glass px-3 py-1.5 rounded-xl text-xs font-semibold text-white hover:bg-white/15">Vol +</button>
-          <button onclick="sendTvKey('KEY_MUTE')" class="vision-glass px-3 py-1.5 rounded-xl text-xs font-semibold text-white hover:bg-white/15">Mute</button>
-          <button onclick="sendTvKey('KEY_POWER')" class="px-3 py-1.5 rounded-xl bg-rose-500/25 border border-rose-400/30 text-xs font-semibold text-rose-200 hover:bg-rose-500/40">Desligar TV</button>
-        </div>
-      `;
-      grid.appendChild(hwBar);
 
-      ALL_APPS.forEach(app => {
-        const btn = document.createElement('button');
-        btn.className = `rounded-2xl p-3.5 flex items-center justify-between border text-left transition ${
-          app.enabled ? 'vision-glass border-white/25 text-white' : 'bg-white/[0.02] border-white/5 text-white/40'
-        }`;
-        btn.onclick = () => {
-          app.enabled = !app.enabled;
-          saveState();
-          renderControlModal();
-          renderDock();
-        };
-        btn.innerHTML = `
-          <div class="flex items-center gap-3 min-w-0">
-            <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style="background:${app.tileBg}">${app.svg}</div>
-            <div class="truncate">
-              <div class="text-sm font-semibold truncate">${app.name}</div>
-              <div class="text-xs opacity-60">${app.enabled ? 'Na Dock (Máx 6)' : 'Ocultada'}</div>
+        <div class="app-card focusable" data-row="1" data-col="1"
+             data-title="Netflix 4K Ultra HD"
+             data-desc="Native Android TV Netflix with hardware Dolby Audio & Toshiba 4K Cinema panel sync."
+             data-badge="Streaming • Native APK"
+             data-orb1="rgba(220,38,38,0.30)" data-orb2="rgba(153,27,27,0.22)"
+             style="--card-grad: linear-gradient(135deg, rgba(220,38,38,0.32), rgba(15,23,42,0.4));"
+             onclick="launchNativeApp('com.netflix.ninja', 'Netflix')">
+          <div class="app-icon" style="background:#dc2626;color:#fff;">N</div>
+          <div>
+            <div class="app-name">Netflix</div>
+            <div class="app-tag">4K HDR Cinema</div>
+          </div>
+        </div>
+
+        <div class="app-card focusable" data-row="1" data-col="2"
+             data-title="YouTube Official"
+             data-desc="Official Google YouTube for Android TV with Google account & Cast queue integration."
+             data-badge="Official • Google Cast"
+             data-orb1="rgba(239,68,68,0.25)" data-orb2="rgba(168,85,247,0.20)"
+             style="--card-grad: linear-gradient(135deg, rgba(239,68,68,0.25), rgba(15,23,42,0.4));"
+             onclick="launchNativeApp('com.google.android.youtube.tv', 'YouTube')">
+          <div class="app-icon" style="background:#ef4444;color:#fff;">YT</div>
+          <div>
+            <div class="app-name">YouTube</div>
+            <div class="app-tag">Official App</div>
+          </div>
+        </div>
+
+        <div class="app-card focusable" data-row="1" data-col="3"
+             data-title="Prime Video"
+             data-desc="Amazon Prime Video 4K HDR native app on your Xiaomi Box."
+             data-badge="Cinema • HDR10+"
+             data-orb1="rgba(56,189,248,0.28)" data-orb2="rgba(37,99,235,0.25)"
+             style="--card-grad: linear-gradient(135deg, rgba(14,165,233,0.30), rgba(15,23,42,0.4));"
+             onclick="launchNativeApp('com.amazon.amazonvideo.livingroom', 'Prime Video')">
+          <div class="app-icon" style="background:#0284c7;color:#fff;">pv</div>
+          <div>
+            <div class="app-name">Prime Video</div>
+            <div class="app-tag">Amazon Originals</div>
+          </div>
+        </div>
+
+        <div class="app-card focusable" data-row="1" data-col="4"
+             data-title="Creator Studio & Filming Set"
+             data-desc="Switch the 65-inch TV into a 4K Dynamic Studio Backdrop for filming Reels/TikToks, 9:16 Safe-Zone Tester, or 4K Teleprompter."
+             data-badge="✨ For Her • Social Media Studio"
+             data-orb1="rgba(236,72,153,0.28)" data-orb2="rgba(168,85,247,0.28)"
+             style="--card-grad: linear-gradient(135deg, rgba(236,72,153,0.30), rgba(168,85,247,0.25));"
+             onclick="switchTab('studio')">
+          <div class="app-icon" style="background:linear-gradient(135deg,#ec4899,#8b5cf6);color:#fff;">✨</div>
+          <div>
+            <div class="app-name">Creator Studio</div>
+            <div class="app-tag">Backdrops & 9:16 Lab</div>
+          </div>
+        </div>
+
+        <div class="app-card focusable" data-row="1" data-col="5"
+             data-title="Google Play Store & Settings"
+             data-desc="Install any new Android TV app or pair Bluetooth headphones & controllers."
+             data-badge="System • Play Store"
+             data-orb1="rgba(16,185,129,0.25)" data-orb2="rgba(56,189,248,0.22)"
+             style="--card-grad: linear-gradient(135deg, rgba(16,185,129,0.28), rgba(15,23,42,0.4));"
+             onclick="launchNativeApp('com.android.vending', 'Google Play Store')">
+          <div class="app-icon" style="background:#10b981;color:#fff;">＋</div>
+          <div>
+            <div class="app-name">Play Store</div>
+            <div class="app-tag">Add New Apps</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-label"><span>Hardware & Room Quick Actions (Toshiba 4K + Xiaomi Box + Smart Lights)</span></div>
+      <div class="action-row">
+        <div class="action-pill focusable" data-row="2" data-col="0" onclick="triggerScene('cinema')">
+          <div class="action-icon">🍿</div>
+          <div>
+            <div class="action-title">Cinema Scene</div>
+            <div class="action-sub">Dim lights + Movie Mode</div>
+          </div>
+        </div>
+        <div class="action-pill focusable" data-row="2" data-col="1" onclick="openBackdropModal(0)">
+          <div class="action-icon">🎥</div>
+          <div>
+            <div class="action-title">Filming Backdrop</div>
+            <div class="action-sub">4K Studio Set Glow</div>
+          </div>
+        </div>
+        <div class="action-pill focusable" data-row="2" data-col="2" onclick="openPrompterModal()">
+          <div class="action-icon">📜</div>
+          <div>
+            <div class="action-title">4K Teleprompter</div>
+            <div class="action-sub">Full-screen script scroll</div>
+          </div>
+        </div>
+        <div class="action-pill focusable" data-row="2" data-col="3" onclick="openAndroidSettings('bluetooth')">
+          <div class="action-icon">🎧</div>
+          <div>
+            <div class="action-title">Bluetooth & Remotes</div>
+            <div class="action-sub">Pair AirPods / Gamepad</div>
+          </div>
+        </div>
+        <div class="action-pill focusable" data-row="2" data-col="4" onclick="tvHardwareCommand('power')">
+          <div class="action-icon">🌙</div>
+          <div>
+            <div class="action-title">Sleep Living Room</div>
+            <div class="action-sub">TV Standby + Lights Off</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       TAB 2: CREATOR STUDIO (WIFE'S SOCIAL MEDIA SUITE)
+       ========================================================= -->
+  <div class="stage" id="stage-studio">
+    <div class="studio-grid">
+      <!-- Left Column: 4K Filming Backdrops -->
+      <div class="studio-panel">
+        <div>
+          <div class="section-label"><span>1. 4K Filming Backdrops</span></div>
+          <p style="font-size:12.5px;color:#cbd5e1;margin-bottom:14px;line-height:1.4;">Turn the 65" TV into an aesthetic studio background behind you while filming Reels, TikToks, or Stories:</p>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div class="action-pill focusable" data-row="1" data-col="0" onclick="openBackdropModal(0)">
+              <div class="action-icon" style="background:linear-gradient(135deg,#f59e0b,#ec4899);">🌅</div>
+              <div>
+                <div class="action-title">Golden Hour Aura</div>
+                <div class="action-sub">Warm editorial sunset</div>
+              </div>
+            </div>
+            <div class="action-pill focusable" data-row="2" data-col="0" onclick="openBackdropModal(1)">
+              <div class="action-icon" style="background:linear-gradient(135deg,#d6d3d1,#78716c);">🏛️</div>
+              <div>
+                <div class="action-title">Minimalist Beige Loft</div>
+                <div class="action-sub">Clean luxury neutral</div>
+              </div>
+            </div>
+            <div class="action-pill focusable" data-row="3" data-col="0" onclick="openBackdropModal(2)">
+              <div class="action-icon" style="background:linear-gradient(135deg,#ec4899,#6366f1);">🔮</div>
+              <div>
+                <div class="action-title">Neon Cyber Studio</div>
+                <div class="action-sub">Vibrant creator glow</div>
+              </div>
             </div>
           </div>
-          <span class="text-xs px-2.5 py-1 rounded-full font-medium ${app.enabled ? 'bg-emerald-500/20 text-emerald-300' : 'bg-white/10 text-white/45'}">
-            ${app.enabled ? 'Ativa' : 'Off'}
-          </span>
-        `;
-        grid.appendChild(btn);
-      });
+        </div>
+        <div style="font-size:11.5px;color:#94a3b8;padding-top:10px;border-top:1px solid var(--border);">
+          💡 <b>Tip:</b> Press <b>OK</b> on any backdrop for 100% chrome-free 4K fullscreen. Use ◀/▶ to cycle moods.
+        </div>
+      </div>
+
+      <!-- Center Column: 9:16 Reels / TikTok Safe-Zone Lab -->
+      <div class="phone-stage-wrap">
+        <div class="phone-916" id="phone-preview-box">
+          <div class="phone-video-sim" id="phone-sim-bg">
+            <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;opacity:0.85;margin-bottom:6px;">9:16 Safe-Zone Lab</div>
+            <div id="hook-headline" style="font-size:19px;font-weight:900;line-height:1.2;">"Stop scrolling if you film content at home..."</div>
+            <div style="margin-top:12px;font-size:11px;padding:4px 10px;border-radius:999px;background:rgba(0,0,0,0.45);">Hook Timer: <span id="hook-timer">0.0s</span> / 3.0s</div>
+          </div>
+          <div class="safezone-top" id="sz-top">⛔ Reels/TikTok Top Header</div>
+          <div class="safezone-clean">✅ SAFE CAPTION & TEXT ZONE</div>
+          <div class="safezone-right" id="sz-right">
+            <span>❤️</span><span>💬</span><span>🔖</span><span>↗️</span>
+          </div>
+          <div class="safezone-bottom" id="sz-bottom">
+            <div style="font-weight:700;">@creator • Sponsored / Caption Area</div>
+            <div style="opacity:0.8;">⛔ Avoid placing subtitles in bottom 22%</div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:12px;max-width:290px;">
+          <div class="hero-badge" style="align-self:flex-start;background:rgba(244,63,94,0.2);color:#fb7185;border-color:rgba(244,63,94,0.4);">9:16 Viral Framing Check</div>
+          <div style="font-size:20px;font-weight:800;letter-spacing:-0.4px;">Reels & TikTok Safe-Zone Tester</div>
+          <p style="font-size:12.5px;color:#cbd5e1;line-height:1.45;">
+            Red zones show exactly where Instagram Reels & TikTok UI buttons cover your video. Keep all hook text and captions inside the green safe box!
+          </p>
+          <div class="action-pill focusable" data-row="1" data-col="1" onclick="toggleSafeZoneMask()">
+            <div class="action-icon">📐</div>
+            <div>
+              <div class="action-title">Toggle UI Dead-Zones</div>
+              <div class="action-sub">Switch IG Reels / TikTok mask</div>
+            </div>
+          </div>
+          <div class="action-pill focusable" data-row="2" data-col="1" onclick="openPrompterModal()">
+            <div class="action-icon">🎙️</div>
+            <div>
+              <div class="action-title">Launch 65" Teleprompter</div>
+              <div class="action-sub">Read scripts looking at camera</div>
+            </div>
+          </div>
+          <div class="action-pill focusable" data-row="3" data-col="1" onclick="launchLofiBackground()">
+            <div class="action-icon">🎵</div>
+            <div>
+              <div class="action-title">Play Editing Vibe (Ad-Free)</div>
+              <div class="action-sub">Launch SmartTube Aesthetic Mix</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Phone Sync & Teleprompter Script -->
+      <div class="studio-panel">
+        <div>
+          <div class="section-label"><span>3. Phone Controller & Prompter</span></div>
+          <div style="background:rgba(0,0,0,0.35);border:1px solid var(--border);border-radius:16px;padding:14px;margin-bottom:12px;">
+            <div style="font-size:11px;color:#38bdf8;font-weight:700;text-transform:uppercase;margin-bottom:6px;">Active Teleprompter Script</div>
+            <div id="prompter-preview" style="font-size:13px;color:#e2e8f0;line-height:1.45;max-height:125px;overflow:hidden;">
+              "Hey everyone! Today we're testing our new living room studio setup — notice how the lighting and backdrop behind me completely transform the shot..."
+            </div>
+          </div>
+          <div class="action-pill focusable" data-row="1" data-col="2" onclick="cycleSampleScript()">
+            <div class="action-icon">✍️</div>
+            <div>
+              <div class="action-title">Cycle Hook Templates</div>
+              <div class="action-sub">High-retention viral hooks</div>
+            </div>
+          </div>
+        </div>
+        <div style="background:rgba(56,189,248,0.09);border:1px solid rgba(56,189,248,0.25);border-radius:16px;padding:12px;">
+          <div style="font-size:12px;font-weight:700;color:#fff;margin-bottom:4px;">📱 Control from iPhone:</div>
+          <div style="font-size:11.5px;color:#38bdf8;font-family:monospace;">http://192.168.2.23:8765/remote</div>
+          <div style="font-size:11px;color:#94a3b8;margin-top:4px;">Paste scripts, trigger backdrops & beam videos straight from your phone.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       TAB 3: SMART HOME & ALEXA
+       ========================================================= -->
+  <div class="stage" id="stage-smarthome">
+    <div class="hero-banner">
+      <div class="hero-left">
+        <div class="hero-badge" style="background:rgba(16,185,129,0.2);color:#34d399;border-color:rgba(16,185,129,0.4);">🏠 Discovered on LAN (192.168.2.0/24)</div>
+        <div class="hero-title">Smart Home & Alexa Bridge</div>
+        <div class="hero-desc">We auto-detected your Tuya Smart Devices (<b>192.168.2.2</b> & <b>192.168.2.15</b>), Toshiba 4K Panel (<b>192.168.2.9</b>), and Xiaomi Box (<b>192.168.2.17</b>). Plus local UPnP emulation so Alexa can trigger TV & Studio scenes by voice!</div>
+      </div>
+      <div class="hero-right">
+        <div class="stat-ring-card">
+          <div class="stat-ring-val" id="iot-count">4</div>
+          <div class="stat-ring-lbl">Smart Devices</div>
+        </div>
+        <div class="stat-ring-card">
+          <div class="stat-ring-val" style="color:#38bdf8;">Alexa</div>
+          <div class="stat-ring-lbl">UPnP Bridge ON</div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-label"><span>Live Discovered Devices on Your Wi-Fi</span></div>
+      <div class="action-row" style="grid-template-columns: repeat(4, 1fr);">
+        <div class="action-pill focusable" data-row="1" data-col="0" onclick="triggerSmartDevice('192.168.2.2', 'toggle')">
+          <div class="action-icon" style="background:rgba(16,185,129,0.2);color:#34d399;">🔌</div>
+          <div>
+            <div class="action-title">Smart Device #1 (Tuya v3.3)</div>
+            <div class="action-sub">IP: 192.168.2.2 • Online ●</div>
+          </div>
+        </div>
+        <div class="action-pill focusable" data-row="1" data-col="1" onclick="triggerSmartDevice('192.168.2.15', 'toggle')">
+          <div class="action-icon" style="background:rgba(56,189,248,0.2);color:#38bdf8;">💡</div>
+          <div>
+            <div class="action-title">Smart Device #2 (Tuya v3.5)</div>
+            <div class="action-sub">IP: 192.168.2.15 • Online ●</div>
+          </div>
+        </div>
+        <div class="action-pill focusable" data-row="1" data-col="2" onclick="tvHardwareCommand('volume_up')">
+          <div class="action-icon" style="background:rgba(168,85,247,0.2);color:#c084fc;">📺</div>
+          <div>
+            <div class="action-title">Toshiba 4K Panel (MQTT)</div>
+            <div class="action-sub">IP: 192.168.2.9 • HDMI 1 Locked</div>
+          </div>
+        </div>
+        <div class="action-pill focusable" data-row="1" data-col="3" onclick="showToast('Alexa Discovery', 'Say: Alexa, discover devices — exposes Cinema Mode & Studio Mode!')">
+          <div class="action-icon" style="background:rgba(245,158,11,0.2);color:#fbbf24;">🗣️</div>
+          <div>
+            <div class="action-title">Alexa Voice Scenes</div>
+            <div class="action-sub">"Alexa, turn on Studio Mode"</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-label"><span>One-Tap Room & Hardware Scenes</span></div>
+      <div class="action-row" style="grid-template-columns: repeat(4, 1fr);">
+        <div class="action-pill focusable" data-row="2" data-col="0" onclick="triggerScene('cinema')">
+          <div class="action-icon">🎬</div>
+          <div>
+            <div class="action-title">Movie Night Scene</div>
+            <div class="action-sub">Panel Dark + Plugs/Lights Dim</div>
+          </div>
+        </div>
+        <div class="action-pill focusable" data-row="2" data-col="1" onclick="triggerScene('studio')">
+          <div class="action-icon">📸</div>
+          <div>
+            <div class="action-title">Filming Lights ON</div>
+            <div class="action-sub">Studio Backdrop + Key Lights</div>
+          </div>
+        </div>
+        <div class="action-pill focusable" data-row="2" data-col="2" onclick="tvHardwareCommand('mute')">
+          <div class="action-icon">🔇</div>
+          <div>
+            <div class="action-title">Toggle TV Hardware Mute</div>
+            <div class="action-sub">Direct Toshiba UPnP/MQTT</div>
+          </div>
+        </div>
+        <div class="action-pill focusable" data-row="2" data-col="3" onclick="tvHardwareCommand('power')">
+          <div class="action-icon">⚡</div>
+          <div>
+            <div class="action-title">Master Shutdown</div>
+            <div class="action-sub">Turn off TV & Smart Plugs</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       TAB 4: DEV & MAC MINI HUD (FOR WILL)
+       ========================================================= -->
+  <div class="stage" id="stage-devhud">
+    <div class="hero-banner">
+      <div class="hero-left">
+        <div class="hero-badge" style="background:rgba(168,85,247,0.2);color:#c084fc;border-color:rgba(168,85,247,0.4);">⚡ Developer Command & Webhook HUD</div>
+        <div class="hero-title">Mac Mini + Xiaomi ADB Telemetry</div>
+        <div class="hero-desc">Push live CI/CD builds, Supabase alerts, or AI coding agent completions directly onto the TV screen (even on top of Netflix/SmartTube) via <code style="color:#38bdf8;">POST http://192.168.2.23:8765/hud</code>.</div>
+      </div>
+      <div class="hero-right">
+        <div class="stat-ring-card">
+          <div class="stat-ring-val" id="dev-mac-cpu">--%</div>
+          <div class="stat-ring-lbl">Mac Mini Load</div>
+        </div>
+        <div class="stat-ring-card">
+          <div class="stat-ring-val" id="dev-box-ram">-- MB</div>
+          <div class="stat-ring-lbl">Xiaomi Free RAM</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="action-row" style="grid-template-columns: repeat(4, 1fr);">
+      <div class="action-pill focusable" data-row="1" data-col="0" onclick="testDevHudWebhook()">
+        <div class="action-icon">🚀</div>
+        <div>
+          <div class="action-title">Test Live HUD Overlay</div>
+          <div class="action-sub">Simulate GitHub Deploy Toast</div>
+        </div>
+      </div>
+      <div class="action-pill focusable" data-row="1" data-col="1" onclick="boostXiaomiRam()">
+        <div class="action-icon">🧹</div>
+        <div>
+          <div class="action-title">Trim Caches & Boost RAM</div>
+          <div class="action-sub">Kill background Android tasks</div>
+        </div>
+      </div>
+      <div class="action-pill focusable" data-row="1" data-col="2" onclick="openAndroidSettings('main')">
+        <div class="action-icon">⚙️</div>
+        <div>
+          <div class="action-title">Android System Settings</div>
+          <div class="action-sub">Native com.android.tv.settings</div>
+        </div>
+      </div>
+      <div class="action-pill focusable" data-row="1" data-col="3" onclick="openAndroidSettings('wifi')">
+        <div class="action-icon">📡</div>
+        <div>
+          <div class="action-title">Network & ADB Status</div>
+          <div class="action-sub">192.168.2.17:5555 Connected</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="background:rgba(8,12,22,0.82);border:1px solid var(--border);border-radius:18px;padding:16px 20px;font-family:monospace;font-size:12px;color:#94a3b8;">
+      <div style="color:#38bdf8;font-weight:700;margin-bottom:6px;">// Quick Terminal Webhook from your Mac Mini or GitHub Actions:</div>
+      <div style="color:#e2e8f0;">curl -X POST http://192.168.2.23:8765/hud -d '{"title":"Production Deploy","msg":"All 42 tests passed on main 🚀"}'</div>
+    </div>
+  </div>
+
+  <!-- BOTTOM REMOTE HINT BAR -->
+  <div class="footer-bar">
+    <div class="key-hints">
+      <span><span class="key-badge">▲ ▼ ◀ ▶</span>Navigate</span>
+      <span><span class="key-badge">OK</span>Launch / Select</span>
+      <span><span class="key-badge">BACK</span>Switch Tab / Close Modal</span>
+      <span><span class="key-badge">HOME</span>CleanTV OS</span>
+    </div>
+    <div>Phone Web Controller & Teleprompter Input: <strong style="color:#38bdf8;">http://192.168.2.23:8765/remote</strong></div>
+  </div>
+</div>
+
+<script>
+  const BRIDGE_URL = "http://192.168.2.23:8765";
+  let currentTab = "cinema";
+  let currentRow = 1;
+  let currentCol = 0;
+  let modalMode = null; // null | 'backdrop' | 'prompter'
+  let backdropIdx = 0;
+  let prompterOffset = 0;
+
+  const BACKDROPS = [
+    {
+      name: "Golden Hour Editorial Loft",
+      css: "radial-gradient(circle at 30% 35%, rgba(251, 146, 60, 0.55) 0%, rgba(244, 63, 94, 0.35) 45%, #09060a 95%)",
+      sub: "Warm 3200K Rim & Key Fill • Ideal for talking-head Reels"
+    },
+    {
+      name: "Minimalist Luxury Stone & Daylight",
+      css: "radial-gradient(circle at 50% 30%, rgba(231, 229, 228, 0.38) 0%, rgba(168, 162, 158, 0.22) 55%, #1c1917 100%)",
+      sub: "Soft neutral daylight • Zero color cast on skin tones"
+    },
+    {
+      name: "Cyberpunk Creator Studio",
+      css: "radial-gradient(circle at 20% 25%, rgba(236, 72, 153, 0.55) 0%, transparent 50%), radial-gradient(circle at 80% 75%, rgba(56, 189, 248, 0.55) 0%, #050711 90%)",
+      sub: "High-contrast magenta/cyan neon bokeh"
+    },
+    {
+      name: "Emerald Tech Focus",
+      css: "radial-gradient(circle at 70% 30%, rgba(16, 185, 129, 0.45) 0%, rgba(14, 165, 233, 0.3) 50%, #04090c 95%)",
+      sub: "Clean developer / SaaS founder aesthetic"
+    }
+  ];
+
+  const SCRIPTS = [
+    "Hey everyone! Today we're testing our new living room studio setup — notice how the lighting and backdrop behind me completely transform the shot without needing a green screen.",
+    "Stop scrolling if you create content at home! Here are 3 framing mistakes that kill your watch time in the first 3 seconds — and how to fix them.",
+    "POV: Your husband is a developer and turned our living room TV into a custom 4K Creator Studio with built-in TikTok safe zones and a giant teleprompter!"
+  ];
+  let scriptIdx = 0;
+
+  function updateClock() {
+    const now = new Date();
+    document.getElementById("clock").textContent = now.toTimeString().slice(0, 5);
+  }
+  setInterval(updateClock, 5000);
+  updateClock();
+
+  // Hook 3-second pacing counter in Studio tab
+  let hookSec = 0;
+  setInterval(() => {
+    hookSec = (hookSec + 0.1) % 3.1;
+    const el = document.getElementById("hook-timer");
+    if (el) el.textContent = hookSec.toFixed(1) + "s";
+  }, 100);
+
+  function showToast(title, msg, tag = "CLEANTV HUD") {
+    const t = document.getElementById("hud-toast");
+    document.getElementById("hud-toast-tag").textContent = tag;
+    document.getElementById("hud-toast-title").textContent = title;
+    document.getElementById("hud-toast-msg").textContent = msg;
+    t.classList.add("visible");
+    clearTimeout(window._toastTimer);
+    window._toastTimer = setTimeout(() => t.classList.remove("visible"), 4800);
+  }
+
+  function getActiveStage() {
+    return document.getElementById("stage-" + currentTab);
+  }
+
+  function getFocusablesForRow(row) {
+    if (row === 0) {
+      return Array.from(document.querySelectorAll("#row-0 .focusable"));
+    }
+    const stage = getActiveStage();
+    if (!stage) return [];
+    return Array.from(stage.querySelectorAll(`.focusable[data-row="${row}"]`));
+  }
+
+  function applyFocus(row, col) {
+    document.querySelectorAll(".focusable.focused").forEach(el => el.classList.remove("focused"));
+    let items = getFocusablesForRow(row);
+    if (!items.length) {
+      row = 0;
+      items = getFocusablesForRow(0);
+    }
+    if (col < 0) col = 0;
+    if (col >= items.length) col = items.length - 1;
+    currentRow = row;
+    currentCol = col;
+    const target = items[col];
+    if (!target) return;
+    target.classList.add("focused");
+
+    // If focused on a top nav pill, switch tab automatically for fluid browsing!
+    if (row === 0 && target.dataset.tab && target.dataset.tab !== currentTab) {
+      switchTab(target.dataset.tab, false);
     }
 
-    let activeRow = 2; // 0 = Top Bar, 1 = Middle Cards/Bento, 2 = Bottom Dock
-    let rowColIdx = { 0: 0, 1: 0, 2: 0 };
-    let modalFocusIdx = 0;
-
-    function getOpenModal() {
-      for (const id of ['modal-weather', 'modal-inputs', 'modal-control']) {
-        const el = document.getElementById(id);
-        if (el && !el.classList.contains('hidden')) return el;
-      }
-      return null;
+    // Update Hero Banner & Ambient Orbs when navigating Cinema cards
+    if (currentTab === "cinema" && row === 1) {
+      if (target.dataset.title) document.getElementById("hero-title").textContent = target.dataset.title;
+      if (target.dataset.desc) document.getElementById("hero-desc").textContent = target.dataset.desc;
+      if (target.dataset.badge) document.getElementById("hero-badge").textContent = target.dataset.badge;
+      const bg = document.getElementById("ambient-bg");
+      if (target.dataset.orb1) bg.style.setProperty("--orb-1", target.dataset.orb1);
+      if (target.dataset.orb2) bg.style.setProperty("--orb-2", target.dataset.orb2);
     }
+  }
 
-    function getRowElements(row) {
-      if (row === 0) {
-        return ['top-0', 'top-1', 'top-2', 'top-3', 'top-4', 'top-5']
-          .map(id => document.getElementById(id))
-          .filter(Boolean);
-      }
-      if (row === 1) {
-        const heroBtns = Array.from(document.querySelectorAll('#hero-cards button'));
-        const bentos = ['bento-weather', 'bento-shield', 'bento-sleep']
-          .map(id => document.getElementById(id))
-          .filter(Boolean);
-        return [...heroBtns, ...bentos];
-      }
-      return Array.from(document.querySelectorAll('#dock-grid button'));
-    }
+  function switchTab(tabName, moveFocusDown = true) {
+    currentTab = tabName;
+    document.querySelectorAll(".stage").forEach(s => s.classList.remove("active"));
+    const st = document.getElementById("stage-" + tabName);
+    if (st) st.classList.add("active");
 
-    function apply2DFocus() {
-      document.querySelectorAll('.tv-focused').forEach(el => el.classList.remove('tv-focused'));
-
-      const modal = getOpenModal();
-      if (modal) {
-        const btns = Array.from(modal.querySelectorAll('button'));
-        if (!btns.length) return;
-        modalFocusIdx = Math.max(0, Math.min(btns.length - 1, modalFocusIdx));
-        btns[modalFocusIdx].classList.add('tv-focused');
-        btns[modalFocusIdx].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-        return;
-      }
-
-      const els = getRowElements(activeRow);
-      if (!els.length) return;
-      rowColIdx[activeRow] = Math.max(0, Math.min(els.length - 1, rowColIdx[activeRow]));
-      const target = els[rowColIdx[activeRow]];
-      if (target) target.classList.add('tv-focused');
-
-      if (activeRow === 2 && focusedIdx !== rowColIdx[2]) {
-        focusedIdx = rowColIdx[2];
-        renderDock();
-      }
-    }
-
-    function openModal(type) {
-      closeModals();
-      modalFocusIdx = 0;
-      if (type === 'weather') {
-        renderWeather();
-        document.getElementById('modal-weather').classList.remove('hidden');
-      } else if (type === 'inputs') {
-        renderInputsModal();
-        document.getElementById('modal-inputs').classList.remove('hidden');
-      } else if (type === 'control') {
-        renderControlModal();
-        document.getElementById('modal-control').classList.remove('hidden');
-      }
-      setTimeout(apply2DFocus, 20);
-    }
-
-    function closeModals() {
-      ['modal-weather', 'modal-inputs', 'modal-control', 'modal-screensaver'].forEach(id => {
-        document.getElementById(id).classList.add('hidden');
-      });
-      setTimeout(apply2DFocus, 20);
-    }
-
-    function toggleScreensaver() {
-      document.getElementById('modal-screensaver').classList.toggle('hidden');
-    }
-
-    function updateClocks() {
-      const now = new Date();
-      const hh = String(now.getHours()).padStart(2, '0');
-      const mm = String(now.getMinutes()).padStart(2, '0');
-      document.getElementById('tv-clock').textContent = `${hh}:${mm}`;
-      document.getElementById('ss-clock').textContent = `${hh}:${mm}`;
-      document.getElementById('clock-uk').textContent = `${hh}:${mm}`;
-      const spH = String((now.getHours() + 20) % 24).padStart(2, '0');
-      document.getElementById('clock-sp').textContent = `${spH}:${mm}`;
-    }
-
-    const canvas = document.getElementById('ambient-canvas');
-    const ctx = canvas.getContext('2d');
-    let nodes = [];
-
-    function initParticles() {
-      canvas.width = window.innerWidth || 1920;
-      canvas.height = window.innerHeight || 1080;
-      nodes = [];
-      const mode = THEMES[themeIdx].mode;
-      if (mode === 'off') return;
-      const count = mode === 'rain' ? 48 : 30;
-      for (let i = 0; i < count; i++) {
-        nodes.push({
-          x: Math.random() * canvas.width,
-          y: Math.random() * canvas.height,
-          r: Math.random() * 1.6 + 0.5,
-          vx: mode === 'rain' ? -0.9 : (Math.random() - 0.5) * 0.25,
-          vy: mode === 'rain' ? Math.random() * 4.5 + 3.5 : (Math.random() - 0.5) * 0.25,
-          a: Math.random() * 0.42 + 0.12
-        });
-      }
-    }
-
-    function tickCanvas() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      const mode = THEMES[themeIdx].mode;
-      if (mode !== 'off') {
-        for (let i = 0; i < nodes.length; i++) {
-          const p = nodes[i];
-          p.x += p.vx;
-          p.y += p.vy;
-          if (p.y > canvas.height) p.y = 0;
-          if (p.y < 0) p.y = canvas.height;
-          if (p.x > canvas.width) p.x = 0;
-          if (p.x < 0) p.x = canvas.width;
-
-          if (mode === 'rain') {
-            ctx.strokeStyle = `rgba(186, 230, 253, ${p.a})`;
-            ctx.lineWidth = 1.2;
-            ctx.beginPath();
-            ctx.moveTo(p.x, p.y);
-            ctx.lineTo(p.x - 2.5, p.y + 10);
-            ctx.stroke();
-          } else {
-            ctx.fillStyle = `rgba(255, 255, 255, ${p.a})`;
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-            ctx.fill();
-          }
+    document.querySelectorAll("#row-0 .nav-pill").forEach((pill, idx) => {
+      if (pill.dataset.tab === tabName) {
+        pill.classList.add("active-tab");
+        if (moveFocusDown) {
+          applyFocus(1, 0);
         }
+      } else {
+        pill.classList.remove("active-tab");
       }
-      requestAnimationFrame(tickCanvas);
-    }
-
-    window.addEventListener('keydown', (e) => {
-      const code = e.keyCode || e.which;
-      if (!document.getElementById('modal-screensaver').classList.contains('hidden')) {
-        closeModals(); e.preventDefault(); return;
-      }
-
-      const modal = getOpenModal();
-      if (modal) {
-        const btns = Array.from(modal.querySelectorAll('button'));
-        if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || code === 39 || code === 40) {
-          modalFocusIdx = (modalFocusIdx + 1) % Math.max(1, btns.length);
-          apply2DFocus(); e.preventDefault(); return;
-        }
-        if (e.key === 'ArrowLeft' || e.key === 'ArrowUp' || code === 37 || code === 38) {
-          modalFocusIdx = (modalFocusIdx - 1 + Math.max(1, btns.length)) % Math.max(1, btns.length);
-          apply2DFocus(); e.preventDefault(); return;
-        }
-        if (e.key === 'Enter' || code === 13) {
-          if (btns[modalFocusIdx]) btns[modalFocusIdx].click();
-          setTimeout(apply2DFocus, 30);
-          e.preventDefault(); return;
-        }
-        if (e.key === 'Escape' || e.key === 'Backspace' || code === 27 || code === 461 || code === 8) {
-          closeModals(); e.preventDefault(); return;
-        }
-        return;
-      }
-
-      if (e.key === 'ArrowRight' || code === 39) {
-        const els = getRowElements(activeRow);
-        rowColIdx[activeRow] = (rowColIdx[activeRow] + 1) % Math.max(1, els.length);
-        if (activeRow === 2) moveFocus(1);
-        apply2DFocus(); e.preventDefault();
-      } else if (e.key === 'ArrowLeft' || code === 37) {
-        const els = getRowElements(activeRow);
-        rowColIdx[activeRow] = (rowColIdx[activeRow] - 1 + Math.max(1, els.length)) % Math.max(1, els.length);
-        if (activeRow === 2) moveFocus(-1);
-        apply2DFocus(); e.preventDefault();
-      } else if (e.key === 'ArrowUp' || code === 38) {
-        activeRow = Math.max(0, activeRow - 1);
-        apply2DFocus(); e.preventDefault();
-      } else if (e.key === 'ArrowDown' || code === 40) {
-        activeRow = Math.min(2, activeRow + 1);
-        apply2DFocus(); e.preventDefault();
-      } else if (e.key === 'Enter' || code === 13) {
-        const els = getRowElements(activeRow);
-        const target = els[rowColIdx[activeRow]];
-        if (target) target.click();
-        e.preventDefault();
-      } else if (e.key === 'Escape' || e.key === 'Backspace' || code === 27 || code === 461 || code === 8) {
-        closeModals(); e.preventDefault();
-      } else if (e.key.toLowerCase() === 'c' || code === 406) { openModal('control'); e.preventDefault(); }
-      else if (e.key.toLowerCase() === 'w' || code === 404) { openModal('weather'); e.preventDefault(); }
-      else if (e.key.toLowerCase() === 'm' || code === 403) { cycleTheme(); e.preventDefault(); }
-      else if (e.key.toLowerCase() === 'r' || code === 405) { toggleRadio(); e.preventDefault(); }
-      else if (e.key.toLowerCase() === 'i') { openModal('inputs'); e.preventDefault(); }
     });
+  }
 
-    async function syncBridgeStatus() {
-      const st = await callBridge('/status');
-      if (st && st.ok) {
-        bridgeConnected = true;
-        if (typeof st.volume === 'number') tvVolume = st.volume;
-        document.getElementById('widget-apps-count').textContent = 'Mac Bridge · Ativo';
-      }
+  // Native App Launching (0ms via AndroidTV JavascriptInterface, or fallback to Mac Bridge ADB)
+  function launchNativeApp(pkg, label) {
+    showToast("Launching " + label, "Starting native Android TV package (" + pkg + ")", "APP LAUNCH");
+    if (window.AndroidTV && window.AndroidTV.launchApp) {
+      const ok = window.AndroidTV.launchApp(pkg);
+      if (ok) return;
+    }
+    fetch(BRIDGE_URL + "/adb/launch", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({package: pkg, label: label})
+    }).catch(() => {});
+  }
+
+  function openAndroidSettings(section) {
+    showToast("System Settings", "Opening Android TV " + section + " settings", "SYSTEM");
+    if (window.AndroidTV && window.AndroidTV.openSettings) {
+      window.AndroidTV.openSettings(section);
+      return;
+    }
+    fetch(BRIDGE_URL + "/adb/settings", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({section: section})
+    }).catch(() => {});
+  }
+
+  function launchLofiBackground() {
+    showToast("Creator Studio Audio", "Opening 4K Lofi Focus Stream in SmartTube (0 Ads)", "STUDIO");
+    if (window.AndroidTV && window.AndroidTV.openDeepLink) {
+      window.AndroidTV.openDeepLink("https://www.youtube.com/watch?v=jfKfPfyJRdk", "com.teamsmarttube.videodaily");
+      return;
+    }
+    fetch(BRIDGE_URL + "/adb/deeplink", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({url: "https://www.youtube.com/watch?v=jfKfPfyJRdk", package: "com.teamsmarttube.videodaily"})
+    }).catch(() => {});
+  }
+
+  // Studio Fullscreen Backdrop & Teleprompter
+  function openBackdropModal(idx) {
+    backdropIdx = idx % BACKDROPS.length;
+    modalMode = "backdrop";
+    const modal = document.getElementById("fullscreen-modal");
+    const content = document.getElementById("modal-content");
+    const b = BACKDROPS[backdropIdx];
+    modal.style.background = b.css;
+    content.innerHTML = `
+      <div id="backdrop-label" style="text-align:center;transition:opacity 0.6s;">
+        <div style="font-size:13px;text-transform:uppercase;letter-spacing:2px;color:rgba(255,255,255,0.65);margin-bottom:8px;">4K Studio Filming Backdrop</div>
+        <div style="font-size:36px;font-weight:800;">${b.name}</div>
+        <div style="font-size:15px;color:rgba(255,255,255,0.75);margin-top:6px;">${b.sub}</div>
+      </div>
+    `;
+    modal.classList.add("open");
+    clearTimeout(window._bdHide);
+    window._bdHide = setTimeout(() => {
+      const lbl = document.getElementById("backdrop-label");
+      if (lbl) lbl.style.opacity = "0";
+    }, 2600);
+  }
+
+  function openPrompterModal() {
+    modalMode = "prompter";
+    prompterOffset = 0;
+    const modal = document.getElementById("fullscreen-modal");
+    const content = document.getElementById("modal-content");
+    modal.style.background = "radial-gradient(circle at 50% 15%, rgba(30,41,59,0.95), #030509 90%)";
+    const scriptText = document.getElementById("prompter-preview").textContent.trim();
+    content.innerHTML = `
+      <div style="position:fixed;top:24px;left:50%;transform:translateX(-50%);padding:6px 18px;border-radius:999px;background:rgba(16,185,129,0.2);border:1px solid #10b981;font-size:12px;font-weight:700;color:#6ee7b7;">
+        👁️ LOOK HERE (CAMERA EYE-LINE GUIDE)
+      </div>
+      <div class="prompter-text" id="prompter-scroll-box">${scriptText}</div>
+    `;
+    modal.classList.add("open");
+  }
+
+  function closeModal() {
+    modalMode = null;
+    document.getElementById("fullscreen-modal").classList.remove("open");
+  }
+
+  function toggleSafeZoneMask() {
+    const top = document.getElementById("sz-top");
+    const right = document.getElementById("sz-right");
+    const bottom = document.getElementById("sz-bottom");
+    const hidden = top.style.display === "none";
+    top.style.display = hidden ? "flex" : "none";
+    right.style.display = hidden ? "flex" : "none";
+    bottom.style.display = hidden ? "flex" : "none";
+    showToast("9:16 Safe-Zone Mask", hidden ? "Showing IG Reels / TikTok UI Overlays" : "Clean 9:16 Preview", "STUDIO LAB");
+  }
+
+  function cycleSampleScript() {
+    scriptIdx = (scriptIdx + 1) % SCRIPTS.length;
+    document.getElementById("prompter-preview").textContent = SCRIPTS[scriptIdx];
+    document.getElementById("hook-headline").textContent = '"' + SCRIPTS[scriptIdx].slice(0, 48) + '..."';
+    showToast("Teleprompter Updated", "Loaded viral hook template #" + (scriptIdx + 1), "PROMPTER");
+  }
+
+  // Hardware & Smart Home Bridge Calls
+  function tvHardwareCommand(action) {
+    showToast("Hardware Command", "Sending '" + action + "' to Toshiba 4K TV & Room", "HARDWARE");
+    fetch(BRIDGE_URL + "/launch", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({app: action})
+    }).catch(() => {});
+  }
+
+  function triggerScene(scene) {
+    showToast("Activating Scene: " + scene.toUpperCase(), "Syncing Toshiba TV + Xiaomi Box + Smart Home", "SMART SCENE");
+    fetch(BRIDGE_URL + "/scene", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({scene: scene})
+    }).catch(() => {});
+    if (scene === "studio") {
+      openBackdropModal(0);
+    }
+  }
+
+  function triggerSmartDevice(ip, action) {
+    showToast("Smart Device (" + ip + ")", "Sending LAN trigger (" + action + ") via Mac Bridge", "SMART HOME");
+    fetch(BRIDGE_URL + "/smarthome/toggle", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({ip: ip, action: action})
+    }).catch(() => {});
+  }
+
+  function testDevHudWebhook() {
+    fetch(BRIDGE_URL + "/hud", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        tag: "GITHUB ACTIONS • MAIN",
+        title: "Production Build Succeeded ✅",
+        msg: "Deployed in 14.2s • 0 warnings • Toshiba + Xiaomi HUD synced"
+      })
+    }).catch(() => {
+      showToast("Production Build Succeeded ✅", "Deployed in 14.2s • 0 warnings", "GITHUB ACTIONS");
+    });
+  }
+
+  function boostXiaomiRam() {
+    showToast("Boosting Xiaomi Box RAM", "Trimming Android caches & background services...", "OPTIMIZER");
+    fetch(BRIDGE_URL + "/adb/boost", {method: "POST"})
+      .then(r => r.json())
+      .then(d => {
+        if (d.freeMB) {
+          document.getElementById("stat-ram").textContent = d.freeMB + " MB";
+          document.getElementById("dev-box-ram").textContent = d.freeMB + " MB";
+          showToast("RAM Boost Complete 🚀", "Available memory now " + d.freeMB + " MB free", "OPTIMIZER");
+        }
+      })
+      .catch(() => {});
+  }
+
+  // Poll live telemetry & incoming HUD / Teleprompter updates from Mac Mini Bridge
+  let lastHudId = 0;
+  function syncTelemetry() {
+    if (window.AndroidTV && window.AndroidTV.getDeviceStats) {
+      try {
+        const st = JSON.parse(window.AndroidTV.getDeviceStats());
+        if (st.ramFreeMB) {
+          document.getElementById("stat-ram").textContent = st.ramFreeMB + " MB";
+          document.getElementById("dev-box-ram").textContent = st.ramFreeMB + " MB";
+        }
+        if (st.storageFreeMB) {
+          document.getElementById("stat-storage").textContent = (st.storageFreeMB / 1024).toFixed(1) + " GB";
+        }
+      } catch (e) {}
     }
 
-    document.getElementById('greeting-text').textContent = USERS[userIdx];
-    document.getElementById('avatar-initial').textContent = USERS[userIdx][0];
-    updateClocks();
-    setInterval(updateClocks, 15000);
-    renderWeather();
-    fetchLiveWeather();
-    renderDock();
-    syncBridgeStatus();
-    setInterval(syncBridgeStatus, 10000);
-    setTimeout(() => { applyTheme(); tickCanvas(); apply2DFocus(); }, 80);
-  </script>
+    fetch(BRIDGE_URL + "/telemetry")
+      .then(r => r.json())
+      .then(d => {
+        document.getElementById("bridge-dot").style.background = "#10b981";
+        if (d.boxRamFreeMB) {
+          document.getElementById("stat-ram").textContent = d.boxRamFreeMB + " MB";
+          document.getElementById("dev-box-ram").textContent = d.boxRamFreeMB + " MB";
+        }
+        if (d.macLoad) {
+          document.getElementById("dev-mac-cpu").textContent = d.macLoad + "%";
+        }
+        if (d.script && d.script !== window._lastScript) {
+          window._lastScript = d.script;
+          document.getElementById("prompter-preview").textContent = d.script;
+          const scBox = document.getElementById("prompter-scroll-box");
+          if (scBox) scBox.textContent = d.script;
+        }
+        if (d.hud && d.hud.id > lastHudId) {
+          lastHudId = d.hud.id;
+          showToast(d.hud.title, d.hud.msg, d.hud.tag || "DEV HUD");
+        }
+        if (d.remoteCommand && d.remoteCommand.id > (window._lastCmdId || 0)) {
+          window._lastCmdId = d.remoteCommand.id;
+          handleRemoteCommand(d.remoteCommand);
+        }
+      })
+      .catch(() => {});
+  }
+  setInterval(syncTelemetry, 2200);
+  syncTelemetry();
+
+  function handleRemoteCommand(cmd) {
+    if (cmd.type === "backdrop") openBackdropModal(cmd.index || 0);
+    if (cmd.type === "prompter") openPrompterModal();
+    if (cmd.type === "close_modal") closeModal();
+    if (cmd.type === "tab") switchTab(cmd.tab, true);
+  }
+
+  window.handleAndroidBack = function() {
+    if (modalMode) {
+      closeModal();
+      return;
+    }
+    if (currentRow > 0) {
+      const tabIdx = ["cinema", "studio", "smarthome", "devhud"].indexOf(currentTab);
+      applyFocus(0, tabIdx >= 0 ? tabIdx : 0);
+    }
+  };
+
+  window.onTVResume = function() {
+    syncTelemetry();
+  };
+
+  // Full 2D D-Pad Controller
+  document.addEventListener("keydown", function(e) {
+    const code = e.keyCode || e.which;
+    const isUp = e.key === "ArrowUp" || code === 38 || code === 19;
+    const isDown = e.key === "ArrowDown" || code === 40 || code === 20;
+    const isLeft = e.key === "ArrowLeft" || code === 37 || code === 21;
+    const isRight = e.key === "ArrowRight" || code === 39 || code === 22;
+    const isEnter = e.key === "Enter" || code === 13 || code === 23 || code === 66;
+    const isBack = e.key === "Escape" || e.key === "Backspace" || code === 4 || code === 27 || code === 8;
+
+    if (modalMode === "backdrop") {
+      e.preventDefault();
+      if (isLeft) openBackdropModal((backdropIdx + BACKDROPS.length - 1) % BACKDROPS.length);
+      else if (isRight || isEnter) openBackdropModal((backdropIdx + 1) % BACKDROPS.length);
+      else if (isBack) closeModal();
+      return;
+    }
+
+    if (modalMode === "prompter") {
+      e.preventDefault();
+      const box = document.getElementById("prompter-scroll-box");
+      if (isDown && box) {
+        prompterOffset -= 45;
+        box.style.transform = `translateY(${prompterOffset}px)`;
+      } else if (isUp && box) {
+        prompterOffset += 45;
+        box.style.transform = `translateY(${prompterOffset}px)`;
+      } else if (isBack) {
+        closeModal();
+      }
+      return;
+    }
+
+    if (isRight) {
+      e.preventDefault();
+      applyFocus(currentRow, currentCol + 1);
+    } else if (isLeft) {
+      e.preventDefault();
+      applyFocus(currentRow, currentCol - 1);
+    } else if (isDown) {
+      e.preventDefault();
+      const nextItems = getFocusablesForRow(currentRow + 1);
+      if (nextItems.length) {
+        const ratio = currentCol / Math.max(1, getFocusablesForRow(currentRow).length - 1);
+        const targetCol = Math.round(ratio * (nextItems.length - 1));
+        applyFocus(currentRow + 1, targetCol);
+      }
+    } else if (isUp) {
+      e.preventDefault();
+      if (currentRow > 0) {
+        if (currentRow === 1) {
+          const tabIdx = ["cinema", "studio", "smarthome", "devhud"].indexOf(currentTab);
+          applyFocus(0, tabIdx >= 0 ? tabIdx : 0);
+        } else {
+          applyFocus(currentRow - 1, currentCol);
+        }
+      }
+    } else if (isEnter) {
+      e.preventDefault();
+      const focused = document.querySelector(".focusable.focused");
+      if (focused) {
+        if (focused.dataset.tab) {
+          switchTab(focused.dataset.tab, true);
+        } else {
+          focused.click();
+        }
+      }
+    } else if (isBack) {
+      e.preventDefault();
+      window.handleAndroidBack();
+    }
+  });
+
+  // Initial Focus on SmartTube Card
+  applyFocus(1, 0);
+</script>
 </body>
 </html>
